@@ -6,7 +6,7 @@
 
 
 let input = null;
-
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:8000`;
 const button_next = document.getElementById("button-next");
 const button_prev = document.getElementById("button-prev");
 const button_submit = document.getElementById("button-submit");
@@ -20,6 +20,8 @@ const true_diag   = document.getElementById("true-diag");
 const x_ray_image = document.getElementById("patient-x-ray-image");
 const x_ray_trait_span = document.getElementById("X_RAY_Trait");
 
+const button_llm_prompt = document.getElementById("send-button");
+const llm_prompt_input = document.getElementById("chat-input");
 
 function redirectIfFinished() {
     const pid = get_participant_id_from_url();
@@ -120,7 +122,7 @@ function get_params_from_url()
         study_id: params.get('study_id') ? decodeURIComponent(params.get('study_id')) : null,
         study_type: params.get('study_id') ? decodeURIComponent(params.get('study_type')) : null,
         page_nr: params.get('page_nr') ? decodeURIComponent(params.get('page_nr')) : null,
-        total_pages: params.get('page_nr') ? decodeURIComponent(params.get('total_pages')) : null,
+        total_pages: params.get('total_pages') ? decodeURIComponent(params.get('total_pages')) : null,
     };
 }
 
@@ -240,6 +242,7 @@ function db_update_success_action(participant_id, study_id, current_page_nr) {
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
     button_toggle_next_or_submit();
     log_page_visit(participant_id, study_id, page_nr);
+    sync_blocky_prediction_to_backend(page_nr);
 }
 
 function button_toggle_next_or_submit() {
@@ -288,11 +291,13 @@ function db_update_duplicate_entry_action(participant_id, study_id, current_page
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
     log_page_visit(participant_id, study_id, page_nr);
+    sync_blocky_prediction_to_backend(page_nr);
 }
 
 
 function next_button_action()
 {
+    
     let ret = get_radio_button_status();
     if(ret == null ){
         alert("Please select an option before proceeding to the next page.");
@@ -300,7 +305,211 @@ function next_button_action()
     }
 
     db_update();
+
+    // Hide the card content again after advancing
+    const card = document.querySelector(".card-row2-col2");
+    if (card) {
+        const content = card.querySelector(".card-content");
+        const hint = card.querySelector(".toggle-hint");
+
+        if (content && hint) {
+            // Temporarily disable transition to avoid flicker
+            content.style.transition = "none";
+            content.classList.remove("show");
+            hint.classList.remove("hidden");
+
+            // Force reflow so browser applies style
+            void content.offsetHeight;
+
+            // Re-enable transitions for next user toggle
+            content.style.transition = "";
+        }
+    }
+
 }
+
+
+
+
+function get_or_create_llm_session_id() {
+    const participant_id = get_participant_id_from_url();
+    const study_id = get_study_id_from_url();
+    // Stable per participant+study, so backend session state persists across pages
+    return `${participant_id}_${study_id}`;
+}
+
+// input.json encodes a compound concept (e.g. "Medium-Low Spine Bend &
+// Slightly Extended Head") as two parallel arrays: concept_raw is an array
+// of trait names, value_raw the matching array of per-trait values. A plain
+// row has both as plain scalars instead. This turns either shape into the
+// backend's Concept payload: {name, value?, score, diagnosis_support,
+// components?} - `components` only appears for the compound case, one
+// entry per sub-trait, so no sub-value ever has to be dropped or guessed.
+function build_concept_payload(concept_raw, value_raw, score, diagnosis_support) {
+    const is_compound = Array.isArray(concept_raw) || Array.isArray(value_raw);
+
+    if (!is_compound) {
+        return {
+            name: concept_raw,
+            value: value_raw,
+            score: score,
+            diagnosis_support: diagnosis_support
+        };
+    }
+
+    const names = Array.isArray(concept_raw) ? concept_raw : [concept_raw];
+    const values = Array.isArray(value_raw) ? value_raw : [value_raw];
+
+    if (names.length !== values.length) {
+        console.warn(
+            "Concept name/value length mismatch, using shorter length:",
+            concept_raw, value_raw
+        );
+    }
+
+    const pair_count = Math.min(names.length, values.length);
+    const components = [];
+    for (let i = 0; i < pair_count; i++) {
+        components.push({
+            // Strip a leading "& " continuation marker so component names
+            // read as standalone traits, e.g. "& Slightly Extended Head"
+            // -> "Slightly Extended Head".
+            name: String(names[i]).replace(/^&\s*/, ""),
+            value: values[i]
+        });
+    }
+
+    return {
+        name: names.join(" "),
+        score: score,
+        diagnosis_support: diagnosis_support,
+        components: components
+    };
+}
+
+async function sync_blocky_prediction_to_backend(page_nr) {
+    const session_id = get_or_create_llm_session_id();
+ 
+    // attr = [patient_id, image, x_ray_loc, true_diag, suggested_diag, trait]
+    const attr = csv_json_get_main_attributes(page_nr);
+    const suggested_diag = attr[4];
+
+    // The backend's "concepts" field is a list of Concept objects, each
+    // {name, value, score, diagnosis_support} (plus an optional
+    // `components` list for compound concepts - see build_concept_payload
+    // below). All 5 concept slots from input.json are sent.
+    const conceptsList = csv_json_get_concept_attributes(page_nr);
+
+    // Map to the backend's Concept shape. Most rows are a simple
+    // {concept: string, value: number} pair, but some are compound - two
+    // parallel arrays like concept: ["Main Bones: Sharp Cuboids",
+    // "& Slightly Extended Head"], value: [0.15, 0.45]. build_concept_payload
+    // turns those into an explicit `components` list instead of silently
+    // dropping them.
+    const concepts = conceptsList
+        .filter(c => {
+            const ok = typeof c.score === "number" && !!c.diagnosis_support;
+            if (!ok) {
+                console.warn(
+                    `Skipping malformed concept (page ${page_nr}):`, c
+                );
+            }
+            return ok;
+        })
+        .map(c => build_concept_payload(c.concept, c.value, c.score, c.diagnosis_support));
+
+    if (concepts.length === 0) {
+        console.warn(`Skipping blocky context sync (page ${page_nr}): no valid concepts`);
+        return;
+    }
+ 
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/context`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: session_id,
+                prediction: suggested_diag,
+                concepts: concepts
+            })
+        });
+ 
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`Failed to sync blocky context (page ${page_nr}): ${response.status} ${errText}`);
+        }
+    } catch (error) {
+        console.error(`Error syncing blocky context (page ${page_nr}):`, error);
+    }
+}
+
+
+async function llm_button_action()
+{
+    let user_input = llm_prompt_input.value.trim();
+    if(user_input == ""){
+        alert("Please enter a prompt before sending to the LLM.");
+        return;
+    }
+ 
+    const session_id = get_or_create_llm_session_id();
+    const chatArea = document.getElementById("llm-chat-messages");
+ 
+    // Show the user's message immediately
+    const userMessage = document.createElement("div");
+    userMessage.className = "message user-message";
+    userMessage.textContent = `You: ${user_input}`;
+    chatArea.appendChild(userMessage);
+ 
+    // Clear input right away for responsiveness
+    llm_prompt_input.value = "";
+    button_llm_prompt.disabled = true;
+ 
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: session_id,
+                message: user_input,
+            })
+        });
+ 
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Server responded ${response.status}: ${errText}`);
+        }
+ 
+        const data = await response.json();
+ 
+        const botMessage = document.createElement("div");
+        botMessage.className = "message bot-message";
+        botMessage.textContent = `LLM: ${data.answer}`;
+        chatArea.appendChild(botMessage);
+ 
+        chatArea.scrollTop = chatArea.scrollHeight;
+    } catch (error) {
+        console.error('Error:', error);
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "message bot-message error";
+        errorMessage.textContent = "There was an error processing your request. Please try again.";
+        chatArea.appendChild(errorMessage);
+    } finally {
+        button_llm_prompt.disabled = false;
+    }
+}
+
+
+
+
+
+
+
+
 
 async function db_get_and_set_participant_diagnosis_prev_button_click(participant_id, study_id, page_nr) {
     console.log("db_get_and_set_participant_diagnosis_prev_button_click");
@@ -429,6 +638,12 @@ function csv_json_get_total_page_count()
 function csv_json_get_main_attributes(page_nr)
 {
     index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
+
+    if (index === undefined || input.PATIENT_ID[index] === undefined) {
+        showError(`No data for page ${page_nr} (index ${index}). Check that total_pages in the URL matches input.json length (${input.PATIENT_ID.length}).`);
+        return [null, null, null, null, null];
+    }
+
     l_patient_id = input.PATIENT_ID[index];
     l_x_ray_loc  = input.X_RAY_LOCATION[index];
     l_true_diag = input.TRUE_DIAG[index];
@@ -457,14 +672,31 @@ function csv_json_get_all_attributes_and_set_in_html_page(page_nr)
     set_additional_attributes_in_html_page(page_nr, attr);
 }
 
+function csv_json_get_concept_attributes(page_nr)
+{
+    index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
+
+    concepts = [];
+    for (let c = 1; c <= 5; c++) {
+        concepts.push({
+            concept: input[`Concept${c}_concept`][index],
+            value: input[`Concept${c}_value`][index],
+            score: input[`Concept${c}_score`][index],
+            diagnosis_support: input[`Concept${c}_diagnosis_support`][index],
+        });
+    }
+
+    return concepts;
+}
+
 function csv_json_get_additional_attributes(page_nr)
 {
     index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
     l_patient_id = input.PATIENT_ID[index];
     concept_card_1_title    = "Important Features";
-    concept_card_1_image    = "img/"       + input.Shap[index];
-    concept_card_1_caption  =  input.Shap_Caption[index];
-    attributes = [concept_card_1_title, concept_card_1_image, concept_card_1_caption];
+    // concept_card_1_image    = "img/"       + input.Shap[index];
+    concept_card_1_image    = "img/" + input.contribution_plot[index];
+    attributes = [concept_card_1_title, concept_card_1_image];
     return attributes;
 }
 
@@ -483,7 +715,11 @@ async function load_json_data() {
         }
         input = await response.json();  // Set input with the loaded JSON
         console.log('Data loaded:', input);  // Debug: Confirm input data loaded
-        init_page();
+        await init_page();
+        // Study doesn't start via the "Weiter" button, so sync the
+        // first blocky's prediction here once init_page() has set it up.
+        const start_page_nr = get_page_nr_from_url();
+        sync_blocky_prediction_to_backend(start_page_nr);
     } catch (error) {
         console.error("There was a problem with the fetch operation:", error);
         input = null;  // Reset input in case of error
@@ -504,6 +740,18 @@ button_submit.addEventListener("click", function () {
 
 button_prev.addEventListener("click", function () {
     prev_button_action();
+});
+
+
+button_llm_prompt.addEventListener("click", function() {
+    llm_button_action();
+});
+
+llm_prompt_input.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault(); // Prevent the default action (form submission)
+        llm_button_action();
+    }
 });
 
 
@@ -546,3 +794,18 @@ window.addEventListener('popstate', () => {
     // Update the Next/Submit button label
     button_toggle_next_or_submit();
 });
+
+// Toggle card content visibility on click for tutorial only
+document.addEventListener("DOMContentLoaded", function () {
+    const card = document.querySelector(".card-row2-col2");
+    const content = card.querySelector(".card-content");
+    const hint = card.querySelector(".toggle-hint");
+
+    card.addEventListener("click", function (event) {
+        // prevent re-triggering when clicking inside the content
+        if (event.target.closest(".card-content")) return;
+
+        content.classList.toggle("show");
+        hint.classList.toggle("hidden");
+    });
+})

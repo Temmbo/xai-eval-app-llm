@@ -61,11 +61,6 @@
                 class="image"
                 src=""
                 alt="SHAP Image" />
-
-            <img id="concept-card-1-colorbar" 
-                class="colorbar-img" 
-                src="../shared_assets/imgs/colorbar.png" 
-                alt="Colorbar" />
           </div>
 
           <!-- caption removed on purpose -->
@@ -77,20 +72,32 @@
       <!-- ROW 2 : explanation + interaction -->
       <div class="main-row2">
 
-        <!-- Card for OCDegen Biomarkers in Column 2 of main-row1 -->
-        <div class="card-row2-col1">
-          <h3 class="title">OCDegen Symptoms</h3>
-          <ul class="biomarkers-list">
-            <li>Strong Spine Bend</li>
-            <li>Strong Bone Variation</li>
-            <li>Tucked Head</li>
-            <li>Main Bones Mutation</li>
-          </ul>
+        <!-- Card for OCDegen Biomarkers in Column 2 of main-row1 TODO REPLACED BY TEXT FIELD -->
+        <div id="llm-chat-box" class="chat-box">
+          <div id="llm-chat-messages" class="chat-messages">
+            <!-- Messages appear here -->
+            <div class="message bot-message">Hi! How can I help?</div>
+          </div>
+
+          <div class="chat-input-area">
+            <input 
+              id="chat-input" 
+              type="text" 
+              placeholder="Ask the LLM for explanations"
+            />
+            <button id="send-button">Send</button>
+          </div>
         </div>
 
         <!-- interaction -->
         <div class="card-row2-col2">
           <h3 class="title">Blocky Diagnosis:</h3>
+          
+          <div class="toggle-hint">Before making your diagnosis, review the Blocky
+            and note which OCDegen symptoms are present. When you're ready, click
+            anywhere in this card to view the AI's suggestion, the true diagnosis,
+            and the confirmed symptoms. You'll then be able to select your own diagnosis.
+          </div>
 
           <div class="card-content">
             <!-- left column -->
@@ -132,7 +139,6 @@
           <h3 class="card-warning">Important</h3>
           <div class="card-warning-text">
             <ul class="card-warning-list">
-              <li><strong>Incorrect answers</strong> reduce your bonus.</li>
               <li><strong>OCDegen can be fatal</strong> if not treated early.</li>
               <li>Treatment is <strong>costly and highly invasive</strong>.</li>
               <li><strong>Verify all diagnoses</strong> before finalizing.</li>

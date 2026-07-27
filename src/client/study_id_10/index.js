@@ -20,6 +20,10 @@ const true_diag   = document.getElementById("true-diag");
 const x_ray_image = document.getElementById("patient-x-ray-image");
 const x_ray_trait_span = document.getElementById("X_RAY_Trait");
 
+const button_llm_prompt = document.getElementById("send-button");
+const llm_prompt_input = document.getElementById("chat-input");
+
+
 function redirectIfFinished() {
     const pid = get_participant_id_from_url();
     const sid = get_study_id_from_url();
@@ -247,6 +251,7 @@ function db_update_success_action(participant_id, study_id, current_page_nr) {
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
     button_toggle_next_or_submit();
     log_page_visit(participant_id, study_id, page_nr);
+    sync_blocky_prediction_to_backend(page_nr);
 }
 
 function button_toggle_next_or_submit() {
@@ -295,6 +300,7 @@ function db_update_duplicate_entry_action(participant_id, study_id, current_page
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
     log_page_visit(participant_id, study_id, page_nr);
+    sync_blocky_prediction_to_backend(page_nr);
 }
 
 function next_button_action()
@@ -329,6 +335,109 @@ function next_button_action()
     }
 
 }
+
+
+function get_or_create_llm_session_id() {
+    const participant_id = get_participant_id_from_url();
+    const study_id = get_study_id_from_url();
+    // Stable per participant+study, so backend session state persists across pages
+    return `${participant_id}_${study_id}`;
+}
+
+async function sync_blocky_prediction_to_backend(page_nr) {
+    const session_id = get_or_create_llm_session_id();
+ 
+    // attr = [patient_id, image, x_ray_loc, true_diag, suggested_diag, trait]
+    const attr = csv_json_get_main_attributes(page_nr);
+    const suggested_diag = attr[4];
+ 
+    try {
+        const response = await fetch('/api/context', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: session_id,
+                xai_context: {
+                    prediction: suggested_diag
+                }
+            })
+        });
+ 
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`Failed to sync blocky context (page ${page_nr}): ${response.status} ${errText}`);
+        }
+    } catch (error) {
+        console.error(`Error syncing blocky context (page ${page_nr}):`, error);
+    }
+}
+
+
+async function llm_button_action()
+{
+    let user_input = llm_prompt_input.value.trim();
+    if(user_input == ""){
+        alert("Please enter a prompt before sending to the LLM.");
+        return;
+    }
+ 
+    const session_id = get_or_create_llm_session_id();
+    const chatArea = document.getElementById("llm-chat-messages");
+ 
+    // Show the user's message immediately
+    const userMessage = document.createElement("div");
+    userMessage.className = "message user-message";
+    userMessage.textContent = `You: ${user_input}`;
+    chatArea.appendChild(userMessage);
+ 
+    // Clear input right away for responsiveness
+    llm_prompt_input.value = "";
+    button_llm_prompt.disabled = true;
+ 
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: session_id,
+                message: user_input,
+            })
+        });
+ 
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Server responded ${response.status}: ${errText}`);
+        }
+ 
+        const data = await response.json();
+ 
+        const botMessage = document.createElement("div");
+        botMessage.className = "message bot-message";
+        botMessage.textContent = `LLM: ${data.answer}`;
+        chatArea.appendChild(botMessage);
+ 
+        chatArea.scrollTop = chatArea.scrollHeight;
+    } catch (error) {
+        console.error('Error:', error);
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "message bot-message error";
+        errorMessage.textContent = "There was an error processing your request. Please try again.";
+        chatArea.appendChild(errorMessage);
+    } finally {
+        button_llm_prompt.disabled = false;
+    }
+}
+
+
+
+
+
+
+
 
 async function db_get_and_set_participant_diagnosis_prev_button_click(participant_id, study_id, page_nr) {
     console.log("db_get_and_set_participant_diagnosis_prev_button_click");
@@ -496,7 +605,12 @@ async function load_json_data() {
         }
         input = await response.json();  // Set input with the loaded JSON
         console.log('Data loaded:', input);  // Debug: Confirm input data loaded
-        init_page();
+        await init_page();
+        // Study doesn't start via the "Weiter" button, so sync the
+        // first blocky's prediction here once init_page() has set it up.
+        const start_page_nr = get_page_nr_from_url();
+        sync_blocky_prediction_to_backend(start_page_nr);
+
     } catch (error) {
         console.error("There was a problem with the fetch operation:", error);
         input = null;  // Reset input in case of error
@@ -511,6 +625,7 @@ button_next.addEventListener("click", function() {
     next_button_action();
 });
 
+
 button_submit.addEventListener("click", function () {
     next_button_action();
 });
@@ -518,6 +633,29 @@ button_submit.addEventListener("click", function () {
 button_prev.addEventListener("click", function () {
     prev_button_action();
 });
+
+
+
+
+
+
+
+button_llm_prompt.addEventListener("click", function() {
+    llm_button_action();
+});
+
+llm_prompt_input.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault(); // Prevent the default action (form submission)
+        llm_button_action();
+    }
+});
+
+
+
+
+
+
 
 
 radio_buttons.forEach((radio) => {

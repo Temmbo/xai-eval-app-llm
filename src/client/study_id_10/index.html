@@ -52,15 +52,21 @@
       <!-- ROW 2 : explanation + interaction -->
       <div class="main-row2">
       
-        <!-- Card for OCDegen Biomarkers in Column 2 of main-row1 -->
-        <div class="card-row2-col1">
-          <h3 class="title">OCDegen Symptoms</h3>
-          <ul class="biomarkers-list">
-            <li>Strong Spine Bend</li>
-            <li>Strong Bone Variation</li>
-            <li>Tucked Head</li>
-            <li>Main Bones Mutation</li>
-          </ul>
+        <!-- Card for OCDegen Biomarkers in Column 2 of main-row1 TODO REPLACED BY TEXT FIELD -->
+        <div id="llm-chat-box" class="chat-box">
+          <div id="llm-chat-messages" class="chat-messages">
+            <!-- Messages appear here -->
+            <div class="message bot-message">Hi! How can I help?</div>
+          </div>
+
+          <div class="chat-input-area">
+            <input 
+              id="chat-input" 
+              type="text" 
+              placeholder="Ask the LLM for explanations"
+            />
+            <button id="send-button">Send</button>
+          </div>
         </div>
       
         <div class="card-row2-col2">

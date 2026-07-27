@@ -441,6 +441,69 @@ button[disabled]:hover {
   /* no grow / shrink */
 }
 
+
+.chat-box {
+  display: flex;
+  flex-direction: column;
+  width: 90%;
+  height: var(--row2-card-height);
+  max-height: var(--row2-card-height);
+  padding: 0;
+  font-size: 14px;
+  overflow: hidden;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 0px 8px rgba(0, 0, 0, 0.2);
+}
+
+#chat-input {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+#send-button {
+  margin-left: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.user-message {
+  background: #007bff;
+  color: blue;
+  margin-left: auto;
+}
+
+.bot-message {
+  background: #eee;
+  color: green;
+  margin-right: auto;
+}
+
+.chat-input-area {
+  display: flex;
+  flex-shrink: 0;
+  border-top: 1px solid #ddd;
+  padding: 8px;
+}
+
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.message {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  max-width: 80%;
+}
+
+
 /* Text Card Styles */
 .card-row1-col1 {
   display: flex;

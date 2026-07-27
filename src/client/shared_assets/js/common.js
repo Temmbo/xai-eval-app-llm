@@ -56,7 +56,7 @@ function get_params_from_url() {
         study_id: params.get('study_id') ? decodeURIComponent(params.get('study_id')) : null,
         study_type: params.get('study_id') ? decodeURIComponent(params.get('study_type')) : null,
         page_nr: params.get('page_nr') ? decodeURIComponent(params.get('page_nr')) : null,
-        total_pages: params.get('page_nr') ? decodeURIComponent(params.get('total_pages')) : null,
+        total_pages: params.get('total_pages') ? decodeURIComponent(params.get('total_pages')) : null,
     };
 }
 
