@@ -135,46 +135,9 @@
         return new URLSearchParams(window.location.search).get(name);
     }
 
-    async function getDataSeq(participant_id) {
-        const JSON_URL = 'https://www.hcxai-group.de/share/seq_lookup.json';
 
-        try {
-            const response = await fetch(JSON_URL, { cache: 'no-store' });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            const data = await response.json();
-            return data[participant_id]?.dataseq ?? null;
-        } catch (error) {
-            console.error("Error fetching seq lookup:", error);
-            return null;
-        }
-    }
 
-    async function determineStage(study_id, participant_id) {
-        if (study_id === "10") return "training_stage";
-        if (study_id === "11") return "noAI_stage";
-
-        if (study_id?.length === 3) {
-
-            const dataseq = await getDataSeq(participant_id);
-            if (!dataseq) {
-                showError(`No dataseq assignment found for participant ID: ${participant_id}`);
-                return;
-            }
-
-            const last = study_id.slice(-1);
-            if ((dataseq === "a" && last === "2") || (dataseq === "b" && last === "1")) {
-                return "XAI_stage2";
-            } else if ((dataseq === "a" && last === "1") || (dataseq === "b" && last === "2")) {
-                return "XAI_stage1";
-            }
-            showError(`Data sequence ${dataseq} is not valid for study ID: ${study_id} and participant ID: ${participant_id}`);
-            return null;
-        }
-
-        showError(`Invalid Study ID: ${study_id} for participant ID: ${participant_id}`);
-        return null;
-    }
 
     document.addEventListener("DOMContentLoaded", async () => {
         const participant_id = getUrlParam("participant_id");
@@ -185,7 +148,7 @@
             return;
         }
 
-        const stage = await determineStage(study_id, participant_id);
+        stage = getUrlParam("stage");
         if (!stage) return;
         const hash = hash_participant_id(participant_id, stage);
 
