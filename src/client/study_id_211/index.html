@@ -63,31 +63,19 @@
                 alt="SHAP Image" />
           </div>
 
-          <!-- caption removed on purpose -->
-          <div class="caption" style="display:none"></div>
+          <!-- Diagnosis hypothesis selector: click a hypothesis to preview its explanation graph -->
+          <div class="hypothesis-selector" id="hypothesis-selector">
+            <button type="button" class="hypothesis-btn active" data-hypothesis="healthy">Healthy</button>
+            <button type="button" class="hypothesis-btn" data-hypothesis="illness-1">Illness&nbsp;1</button>
+            <button type="button" class="hypothesis-btn" data-hypothesis="illness-2">Illness&nbsp;2</button>
+            <button type="button" class="hypothesis-btn" data-hypothesis="illness-3">Illness&nbsp;3</button>
+          </div>
         </div>
       </div> <!-- /main-row1 -->
 
 
       <!-- ROW 2 : explanation + interaction -->
       <div class="main-row2">
-
-        <!-- Card for OCDegen Biomarkers in Column 2 of main-row1 TODO REPLACED BY TEXT FIELD -->
-        <div id="llm-chat-box" class="chat-box">
-          <div id="llm-chat-messages" class="chat-messages">
-            <!-- Messages appear here -->
-            <div class="message bot-message">Hi! How can I help?</div>
-          </div>
-
-          <div class="chat-input-area">
-            <input 
-              id="chat-input" 
-              type="text" 
-              placeholder="Ask the LLM for explanations"
-            />
-            <button id="send-button">Send</button>
-          </div>
-        </div>
 
         <!-- interaction -->
         <div class="card-row2-col2">
@@ -133,6 +121,27 @@
               </label>
             </div>
           </div> <!-- /card-content -->
+        </div>
+
+        <!-- Card for OCDegen Biomarkers in Column 2 of main-row1 TODO REPLACED BY TEXT FIELD -->
+        <div id="llm-chat-box" class="chat-box">
+          <div id="llm-chat-messages" class="chat-messages">
+            <!-- Messages appear here -->
+            <div class="message bot-message">Hi! How can I help?</div>
+          </div>
+
+          <div class="chat-input-area">
+            <!-- Hidden input retained for JS compatibility; users cannot type directly -->
+            <input id="chat-input" type="hidden" />
+
+            <!-- Three template buttons replace the visible free-text input -->
+            <button id="llm-template-1" class="template-button" disabled>Loading...</button>
+            <button id="llm-template-2" class="template-button" disabled>Loading...</button>
+            <button id="llm-template-3" class="template-button" disabled>Loading...</button>
+
+            <!-- Keep send button present but hidden so existing JS bindings remain safe -->
+            <button id="send-button" class="invisible">Send</button>
+          </div>
         </div>
 
         <div class="card-row2-col1">

@@ -23,6 +23,11 @@ const x_ray_trait_span = document.getElementById("X_RAY_Trait");
 const button_llm_prompt = document.getElementById("send-button");
 const llm_prompt_input = document.getElementById("chat-input");
 
+// Diagnosis hypothesis selector (Healthy / Illness 1 / 2 / 3) in the SHAP
+// explanation card.
+const hypothesis_selector = document.getElementById("hypothesis-selector");
+const hypothesis_buttons = document.querySelectorAll(".hypothesis-btn");
+
 function redirectIfFinished() {
     const pid = get_participant_id_from_url();
     const sid = get_study_id_from_url();
@@ -492,6 +497,7 @@ async function llm_button_action()
         chatArea.appendChild(botMessage);
  
         chatArea.scrollTop = chatArea.scrollHeight;
+        get_template_from_llm(); // Refresh the template buttons after each LLM response
     } catch (error) {
         console.error('Error:', error);
         const errorMessage = document.createElement("div");
@@ -503,12 +509,49 @@ async function llm_button_action()
     }
 }
 
-
-
-
-
-
-
+async function get_template_from_llm() {
+    // This function obtains the three recommended chat inputs from the LLM and populates the corresponding buttons in the UI.
+    const session_id = get_or_create_llm_session_id();
+    const templateButtons = [
+        document.getElementById("llm-template-1"),
+        document.getElementById("llm-template-2"),
+        document.getElementById("llm-template-3")
+    ];
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/templates`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ session_id: session_id })
+        });
+ 
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Server responded ${response.status}: ${errText}`);
+        }
+ 
+        const data = await response.json();
+ 
+        // Populate the buttons with the received templates
+        templateButtons.forEach((button, index) => {
+            if (data.templates[index]) {
+                button.textContent = data.templates[index];
+                button.disabled = false;
+                button.onclick = () => {
+                    llm_prompt_input.value = data.templates[index];
+                    llm_button_action();
+                };
+            } else {
+                button.textContent = "No template available";
+                button.disabled = true;
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching templates:', error);
+    }
+}
 
 
 async function db_get_and_set_participant_diagnosis_prev_button_click(participant_id, study_id, page_nr) {
@@ -707,6 +750,23 @@ function set_additional_attributes_in_html_page(page_nr, attr)
     document.getElementById("concept-card-1-caption").textContent = attr[2];
 }
 
+// --- Diagnosis hypothesis selector (Healthy / Illness 1 / 2 / 3) ---------
+// Handles ONLY the clicking/highlighting behaviour of the selector in the
+// SHAP explanation card. Loading/swapping the corresponding explanation
+// graph per hypothesis is not implemented yet - hypothesis_selected() below
+// is where that data-switching logic can be added later.
+
+function set_active_hypothesis_button(hypothesis) {
+    hypothesis_buttons.forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.hypothesis === hypothesis);
+    });
+}
+
+function hypothesis_selected(hypothesis) {
+    console.log("Hypothesis selected:", hypothesis);
+    // TODO: load/display the explanation graph for this hypothesis.
+}
+
 async function load_json_data() {
     try {
         const response = await fetch("input.json"); // Fetch JSON asynchronously
@@ -716,6 +776,9 @@ async function load_json_data() {
         input = await response.json();  // Set input with the loaded JSON
         console.log('Data loaded:', input);  // Debug: Confirm input data loaded
         await init_page();
+        // Fetch LLM templates and populate the template buttons
+        await get_template_from_llm();
+
         // Study doesn't start via the "Weiter" button, so sync the
         // first blocky's prediction here once init_page() has set it up.
         const start_page_nr = get_page_nr_from_url();
@@ -758,6 +821,16 @@ llm_prompt_input.addEventListener("keypress", function(event) {
 radio_buttons.forEach((radio) => {
     radio.addEventListener("change", function () {
         radio_button_changed();
+    });
+});
+
+hypothesis_buttons.forEach((btn) => {
+    btn.addEventListener("click", function () {
+        const hypothesis = btn.dataset.hypothesis;
+        if (btn.classList.contains("active")) return; // already selected, nothing to do
+
+        set_active_hypothesis_button(hypothesis);
+        hypothesis_selected(hypothesis);
     });
 });
 
