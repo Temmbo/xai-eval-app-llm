@@ -1,0 +1,596 @@
+{
+    "PATIENT_ID": [
+        "HBA2TBUI",
+        "WV5ZJJYX",
+        "3HP5UT5R",
+        "PL27DA8A",
+        "Y48HGDAB",
+        "CM569KNA",
+        "OC7ZF4N2",
+        "ACWE1X0E",
+        "0GV1EPEO",
+        "IPYWR6UM"
+    ],
+    "X_RAY_IMAGE": [
+        "37a804fb-d0d8-43aa-adbb-2afbaac48f2b.png",
+        "b963dd39-d699-4452-9a37-6e43cd50c793.png",
+        "4d3efc32-d728-462f-afa9-47423fcb09cc.png",
+        "ec7ee65c-62fd-44e6-982c-b2662751663b.png",
+        "d2d8cd85-d455-4790-9aa6-ac807dafd8b5.png",
+        "e4d58a94-3d6f-4a47-ac6a-80081b3c4604.png",
+        "5c4d41a5-7b9c-4fd3-9d45-f7434d15dc78.png",
+        "0a1e18e2-7227-450b-a675-a07d5d2ffc83.png",
+        "94f50d05-88ee-40b7-be56-2ffb1b9383a3.png",
+        "2b06c898-4484-44e6-9fc4-8b5ae31432f7.png"
+    ],
+    "TRUE_DIAG": [
+        "OCDegen",
+        "Healthy",
+        "Healthy",
+        "OCDegen",
+        "Healthy",
+        "OCDegen",
+        "Healthy",
+        "OCDegen",
+        "Healthy",
+        "OCDegen"
+    ],
+    "SUGGESTED_DIAG": [
+        "OCDegen",
+        "Healthy",
+        "Healthy",
+        "OCDegen",
+        "Healthy",
+        "OCDegen",
+        "Healthy",
+        "OCDegen",
+        "OCDegen",
+        "OCDegen"
+    ],
+    "PHASE": [
+        "1",
+        "2",
+        "1",
+        "1",
+        "2",
+        "2",
+        "1",
+        "1",
+        "2",
+        "2"
+    ],
+    "Concept1_Salience": [
+        "37a804fb-d0d8-43aa-adbb-2afbaac48f2b_lrp_0.png",
+        "b963dd39-d699-4452-9a37-6e43cd50c793_lrp_0.png",
+        "4d3efc32-d728-462f-afa9-47423fcb09cc_lrp_0.png",
+        "ec7ee65c-62fd-44e6-982c-b2662751663b_lrp_0.png",
+        "d2d8cd85-d455-4790-9aa6-ac807dafd8b5_lrp_0.png",
+        "e4d58a94-3d6f-4a47-ac6a-80081b3c4604_lrp_0.png",
+        "5c4d41a5-7b9c-4fd3-9d45-f7434d15dc78_lrp_0.png",
+        "0a1e18e2-7227-450b-a675-a07d5d2ffc83_lrp_0.png",
+        "94f50d05-88ee-40b7-be56-2ffb1b9383a3_lrp_0.png",
+        "2b06c898-4484-44e6-9fc4-8b5ae31432f7_lrp_0.png"
+    ],
+    "Concept1_Caption": [
+        "Medium-High Bone Shape Variation (0.60)<br>Score: 0.83 for OCDegen",
+        "Medium-Low Bone Shape Variation (0.28)<br>Score: 0.86 for Healthy",
+        "Main Bones Mutation (1.10)<br>Score: 0.59 for OCDegen",
+        "Medium-High Bone Shape Variation (0.60)<br>Score: 0.91 for OCDegen",
+        "Low Bone Shape Variation (0.15)<br>Score: 0.65 for Healthy",
+        "Medium-High Bone Shape Variation (0.60)<br>Score: 0.62 for OCDegen",
+        "Medium-Low Bone Shape Variation (0.34)<br>Score: 0.76 for Healthy",
+        "Medium-High Spine Bend (0.25) & Slightly Tucked Head (0.55)<br>Score: 0.81 for OCDegen",
+        "Main Bones Mutation (1.14)<br>Score: 0.62 for OCDegen",
+        "High Bone Shape Variation (0.63)<br>Score: 0.81 for OCDegen"
+    ],
+    "Concept1_Description": [
+        "<b>Medium-High Bone Shape Variation</b> contributes <em>strongly</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Medium-Low Bone Shape Variation</b> contributes <em>strongly</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones Mutation</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Medium-High Bone Shape Variation</b> contributes <em>strongly</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Low Bone Shape Variation</b> contributes <em>notably</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Medium-High Bone Shape Variation</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Medium-Low Bone Shape Variation</b> contributes <em>strongly</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Medium-High Spine Bend & Slightly Tucked Head</b> contributes <em>strongly</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Main Bones Mutation</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>High Bone Shape Variation</b> contributes <em>strongly</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>."
+    ],
+    "Concept2_Salience": [
+        "37a804fb-d0d8-43aa-adbb-2afbaac48f2b_lrp_1.png",
+        "b963dd39-d699-4452-9a37-6e43cd50c793_lrp_1.png",
+        "4d3efc32-d728-462f-afa9-47423fcb09cc_lrp_1.png",
+        "ec7ee65c-62fd-44e6-982c-b2662751663b_lrp_1.png",
+        "d2d8cd85-d455-4790-9aa6-ac807dafd8b5_lrp_1.png",
+        "e4d58a94-3d6f-4a47-ac6a-80081b3c4604_lrp_1.png",
+        "5c4d41a5-7b9c-4fd3-9d45-f7434d15dc78_lrp_1.png",
+        "0a1e18e2-7227-450b-a675-a07d5d2ffc83_lrp_1.png",
+        "94f50d05-88ee-40b7-be56-2ffb1b9383a3_lrp_1.png",
+        "2b06c898-4484-44e6-9fc4-8b5ae31432f7_lrp_1.png"
+    ],
+    "Concept2_Caption": [
+        "Medium-High Spine Bend (0.28)<br>Score: 0.56 for OCDegen",
+        "Main Bones: Sharp Cuboids (0.10)<br>Score: 0.41 for Healthy",
+        "Low Spine Bend (0.06) & Slightly Extended Head (0.35)<br>Score: 0.48 for Healthy",
+        "Slightly Tucked Head (0.68)<br>Score: 0.56 for OCDegen",
+        "Slightly Tucked Head (0.54)<br>Score: 0.54 for OCDegen",
+        "High Spine Bend (0.39)<br>Score: 0.43 for OCDegen",
+        "Medium-High Spine Bend (0.22)<br>Score: 0.54 for OCDegen",
+        "Main Bones Mutation (1.13) & Slightly Tucked Head (0.55)<br>Score: 0.74 for OCDegen",
+        "Medium-Low Bone Shape Variation (0.39)<br>Score: 0.51 for Healthy",
+        "Medium-High Spine Bend (0.28)<br>Score: 0.56 for OCDegen"
+    ],
+    "Concept2_Description": [
+        "<b>Medium-High Spine Bend</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Main Bones: Sharp Cuboids</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Low Spine Bend & Slightly Extended Head</b> contributes <em>notably</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Slightly Tucked Head</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Slightly Tucked Head</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>High Spine Bend</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Medium-High Spine Bend</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Main Bones Mutation & Slightly Tucked Head</b> contributes <em>strongly</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Medium-Low Bone Shape Variation</b> contributes <em>notably</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Medium-High Spine Bend</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>."
+    ],
+    "Concept3_Salience": [
+        "37a804fb-d0d8-43aa-adbb-2afbaac48f2b_lrp_2.png",
+        "b963dd39-d699-4452-9a37-6e43cd50c793_lrp_2.png",
+        "4d3efc32-d728-462f-afa9-47423fcb09cc_lrp_2.png",
+        "ec7ee65c-62fd-44e6-982c-b2662751663b_lrp_2.png",
+        "d2d8cd85-d455-4790-9aa6-ac807dafd8b5_lrp_2.png",
+        "e4d58a94-3d6f-4a47-ac6a-80081b3c4604_lrp_2.png",
+        "5c4d41a5-7b9c-4fd3-9d45-f7434d15dc78_lrp_2.png",
+        "0a1e18e2-7227-450b-a675-a07d5d2ffc83_lrp_2.png",
+        "94f50d05-88ee-40b7-be56-2ffb1b9383a3_lrp_2.png",
+        "2b06c898-4484-44e6-9fc4-8b5ae31432f7_lrp_2.png"
+    ],
+    "Concept3_Caption": [
+        "Main Bones: Smooth Sphere (0.95)<br>Score: 0.42 for Healthy",
+        "Medium-Low Spine Bend (0.17) & Slightly Extended Head (0.48)<br>Score: 0.39 for Healthy",
+        "Medium-Low Bone Shape Variation (0.31)<br>Score: 0.47 for Healthy",
+        "Main Bones: Sharp Cuboids (0.15)<br>Score: 0.38 for Healthy",
+        "Main Bones: Smooth Sphere (0.86)<br>Score: 0.43 for Healthy",
+        "Slightly Extended Head (0.35)<br>Score: 0.37 for Healthy",
+        "Slightly Extended Head (0.45)<br>Score: 0.37 for Healthy",
+        "Main Bones Mutation (1.13) & Medium-High Spine Bend (0.25)<br>Score: 0.73 for OCDegen",
+        "Medium-Low Spine Bend (0.14)<br>Score: 0.36 for Healthy",
+        "Slightly Extended Head (0.33)<br>Score: 0.37 for Healthy"
+    ],
+    "Concept3_Description": [
+        "<b>Main Bones: Smooth Sphere</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Medium-Low Spine Bend & Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Medium-Low Bone Shape Variation</b> contributes <em>notably</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones: Sharp Cuboids</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones: Smooth Sphere</b> contributes <em>notably</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones Mutation & Medium-High Spine Bend</b> contributes <em>strongly</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Medium-Low Spine Bend</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>."
+    ],
+    "Concept4_Salience": [
+        "37a804fb-d0d8-43aa-adbb-2afbaac48f2b_lrp_3.png",
+        "b963dd39-d699-4452-9a37-6e43cd50c793_lrp_3.png",
+        "4d3efc32-d728-462f-afa9-47423fcb09cc_lrp_3.png",
+        "ec7ee65c-62fd-44e6-982c-b2662751663b_lrp_3.png",
+        "d2d8cd85-d455-4790-9aa6-ac807dafd8b5_lrp_3.png",
+        "e4d58a94-3d6f-4a47-ac6a-80081b3c4604_lrp_3.png",
+        "5c4d41a5-7b9c-4fd3-9d45-f7434d15dc78_lrp_3.png",
+        "0a1e18e2-7227-450b-a675-a07d5d2ffc83_lrp_3.png",
+        "94f50d05-88ee-40b7-be56-2ffb1b9383a3_lrp_3.png",
+        "2b06c898-4484-44e6-9fc4-8b5ae31432f7_lrp_3.png"
+    ],
+    "Concept4_Caption": [
+        "Slightly Extended Head (0.49)<br>Score: 0.32 for Healthy",
+        "Medium-Low Spine Bend (0.17)<br>Score: 0.35 for Healthy",
+        "Slightly Extended Head (0.35)<br>Score: 0.37 for Healthy",
+        "Main Bones: Sharp Cuboids (0.15) & Low Spine Bend (0.05)<br>Score: 0.38 for Healthy",
+        "Medium-Low Spine Bend (0.11)<br>Score: 0.36 for Healthy",
+        "Main Bones: Smooth Sphere (1.01)<br>Score: 0.33 for Healthy",
+        "Main Bones: Sharp Cuboids (0.15)<br>Score: 0.36 for Healthy",
+        "Main Bones Mutation (1.13)<br>Score: 0.61 for OCDegen",
+        "Slightly Tucked Head (0.50)<br>Score: 0.34 for OCDegen",
+        "Main Bones: Smooth Sphere (1.00)<br>Score: 0.35 for Healthy"
+    ],
+    "Concept4_Description": [
+        "<b>Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Medium-Low Spine Bend</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones: Sharp Cuboids & Low Spine Bend</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Medium-Low Spine Bend</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones: Smooth Sphere</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones: Sharp Cuboids</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones Mutation</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Slightly Tucked Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Main Bones: Smooth Sphere</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>."
+    ],
+    "Concept5_Salience": [
+        "37a804fb-d0d8-43aa-adbb-2afbaac48f2b_lrp_4.png",
+        "b963dd39-d699-4452-9a37-6e43cd50c793_lrp_4.png",
+        "4d3efc32-d728-462f-afa9-47423fcb09cc_lrp_4.png",
+        "ec7ee65c-62fd-44e6-982c-b2662751663b_lrp_4.png",
+        "d2d8cd85-d455-4790-9aa6-ac807dafd8b5_lrp_4.png",
+        "e4d58a94-3d6f-4a47-ac6a-80081b3c4604_lrp_4.png",
+        "5c4d41a5-7b9c-4fd3-9d45-f7434d15dc78_lrp_4.png",
+        "0a1e18e2-7227-450b-a675-a07d5d2ffc83_lrp_4.png",
+        "94f50d05-88ee-40b7-be56-2ffb1b9383a3_lrp_4.png",
+        "2b06c898-4484-44e6-9fc4-8b5ae31432f7_lrp_4.png"
+    ],
+    "Concept5_Caption": [
+        "No Roll (-0.04) & Moderate Pitch (0.40)<br>Score: 0.24 for Healthy",
+        "Slightly Extended Head (0.48)<br>Score: 0.34 for Healthy",
+        "Low Spine Bend (0.06)<br>Score: 0.35 for Healthy",
+        "Low Spine Bend (0.05)<br>Score: 0.36 for Healthy",
+        "Main Bones: Smooth Sphere (0.86) & Medium-Low Spine Bend (0.11)<br>Score: 0.32 for Healthy",
+        "Sec. Bones: Rounded Cuboids (0.41) & Slightly Extended Head (0.35)<br>Score: 0.09 for Healthy",
+        "Main Bones: Sharp Cuboids (0.15) & Slightly Extended Head (0.45)<br>Score: 0.30 for Healthy",
+        "Medium-High Spine Bend (0.25)<br>Score: 0.56 for OCDegen",
+        "Sec. Bones: Blocky Spheres (0.75)<br>Score: 0.28 for Healthy",
+        "Main Bones: Smooth Sphere (1.00) & Slightly Extended Head (0.33)<br>Score: 0.28 for Healthy"
+    ],
+    "Concept5_Description": [
+        "<b>No Roll & Moderate Pitch</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Low Spine Bend</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Low Spine Bend</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones: Smooth Sphere & Medium-Low Spine Bend</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Sec. Bones: Rounded Cuboids & Slightly Extended Head</b> contributes <em>slightly</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones: Sharp Cuboids & Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Medium-High Spine Bend</b> contributes <em>notably</em> toward the likelihood of <span class=\"unhealthy\">OCDegen</span>.",
+        "<b>Sec. Bones: Blocky Spheres</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>.",
+        "<b>Main Bones: Smooth Sphere & Slightly Extended Head</b> contributes <em>moderately</em> toward the likelihood of <span class=\"healthy\">Healthy</span>."
+    ],
+    "contribution_plot": [
+        "concepts_37a804fb-d0d8-43aa-adbb-2afbaac48f2b.png",
+        "concepts_b963dd39-d699-4452-9a37-6e43cd50c793.png",
+        "concepts_4d3efc32-d728-462f-afa9-47423fcb09cc.png",
+        "concepts_ec7ee65c-62fd-44e6-982c-b2662751663b.png",
+        "concepts_d2d8cd85-d455-4790-9aa6-ac807dafd8b5.png",
+        "concepts_e4d58a94-3d6f-4a47-ac6a-80081b3c4604.png",
+        "concepts_5c4d41a5-7b9c-4fd3-9d45-f7434d15dc78.png",
+        "concepts_0a1e18e2-7227-450b-a675-a07d5d2ffc83.png",
+        "concepts_94f50d05-88ee-40b7-be56-2ffb1b9383a3.png",
+        "concepts_2b06c898-4484-44e6-9fc4-8b5ae31432f7.png"
+    ],
+    "X_RAY_TRAIT": [
+        "Strong Bone Variation, Strong Spine Bend, Tucked Head",
+        "No Trait",
+        "Main Bones Mutation",
+        "Tucked Head, Strong Bone Variation",
+        "Tucked Head",
+        "Strong Spine Bend, Main Bones Mutation, Strong Bone Variation",
+        "Strong Spine Bend",
+        "Main Bones Mutation, Strong Spine Bend",
+        "Main Bones Mutation",
+        "Strong Bone Variation, Strong Spine Bend"
+    ],
+    "X_RAY_LOCATION": [
+        "MIA",
+        "PHX",
+        "SF",
+        "BOS",
+        "CHI",
+        "BOS",
+        "CHI",
+        "SF",
+        "SEA",
+        "PHX"
+    ],
+    "INDEX": [
+        "108",
+        "115",
+        "51",
+        "107",
+        "10",
+        "43",
+        "56",
+        "19",
+        "15",
+        "96"
+    ],
+    "Concept1_concept": [
+        "Medium-High Bone Shape Variation",
+        "Medium-Low Bone Shape Variation",
+        "Main Bones Mutation",
+        "Medium-High Bone Shape Variation",
+        "Low Bone Shape Variation",
+        "Medium-High Bone Shape Variation",
+        "Medium-Low Bone Shape Variation",
+        [
+            "Medium-High Spine Bend",
+            "& Slightly Tucked Head"
+        ],
+        "Main Bones Mutation",
+        "High Bone Shape Variation"
+    ],
+    "Concept1_value": [
+        0.6,
+        0.28,
+        1.1,
+        0.6,
+        0.15,
+        0.6,
+        0.34,
+        [
+            0.25,
+            0.55
+        ],
+        1.14,
+        0.63
+    ],
+    "Concept1_score": [
+        0.83,
+        0.86,
+        0.59,
+        0.91,
+        0.65,
+        0.62,
+        0.76,
+        0.81,
+        0.62,
+        0.81
+    ],
+    "Concept1_diagnosis_support": [
+        "OCDegen",
+        "Healthy",
+        "OCDegen",
+        "OCDegen",
+        "Healthy",
+        "OCDegen",
+        "Healthy",
+        "OCDegen",
+        "OCDegen",
+        "OCDegen"
+    ],
+    "Concept2_concept": [
+        "Medium-High Spine Bend",
+        "Main Bones: Sharp Cuboids",
+        [
+            "Low Spine Bend",
+            "& Slightly Extended Head"
+        ],
+        "Slightly Tucked Head",
+        "Slightly Tucked Head",
+        "High Spine Bend",
+        "Medium-High Spine Bend",
+        [
+            "Main Bones Mutation",
+            "& Slightly Tucked Head"
+        ],
+        "Medium-Low Bone Shape Variation",
+        "Medium-High Spine Bend"
+    ],
+    "Concept2_value": [
+        0.28,
+        0.1,
+        [
+            0.06,
+            0.35
+        ],
+        0.68,
+        0.54,
+        0.39,
+        0.22,
+        [
+            1.13,
+            0.55
+        ],
+        0.39,
+        0.28
+    ],
+    "Concept2_score": [
+        0.56,
+        0.41,
+        0.48,
+        0.56,
+        0.54,
+        0.43,
+        0.54,
+        0.74,
+        0.51,
+        0.56
+    ],
+    "Concept2_diagnosis_support": [
+        "OCDegen",
+        "Healthy",
+        "Healthy",
+        "OCDegen",
+        "OCDegen",
+        "OCDegen",
+        "OCDegen",
+        "OCDegen",
+        "Healthy",
+        "OCDegen"
+    ],
+    "Concept3_concept": [
+        "Main Bones: Smooth Sphere",
+        [
+            "Medium-Low Spine Bend",
+            "& Slightly Extended Head"
+        ],
+        "Medium-Low Bone Shape Variation",
+        "Main Bones: Sharp Cuboids",
+        "Main Bones: Smooth Sphere",
+        "Slightly Extended Head",
+        "Slightly Extended Head",
+        [
+            "Main Bones Mutation",
+            "& Medium-High Spine Bend"
+        ],
+        "Medium-Low Spine Bend",
+        "Slightly Extended Head"
+    ],
+    "Concept3_value": [
+        0.95,
+        [
+            0.17,
+            0.48
+        ],
+        0.31,
+        0.15,
+        0.86,
+        0.35,
+        0.45,
+        [
+            1.13,
+            0.25
+        ],
+        0.14,
+        0.33
+    ],
+    "Concept3_score": [
+        0.42,
+        0.39,
+        0.47,
+        0.38,
+        0.43,
+        0.37,
+        0.37,
+        0.73,
+        0.36,
+        0.37
+    ],
+    "Concept3_diagnosis_support": [
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "OCDegen",
+        "Healthy",
+        "Healthy"
+    ],
+    "Concept4_concept": [
+        "Slightly Extended Head",
+        "Medium-Low Spine Bend",
+        "Slightly Extended Head",
+        [
+            "Main Bones: Sharp Cuboids",
+            "& Low Spine Bend"
+        ],
+        "Medium-Low Spine Bend",
+        "Main Bones: Smooth Sphere",
+        "Main Bones: Sharp Cuboids",
+        "Main Bones Mutation",
+        "Slightly Tucked Head",
+        "Main Bones: Smooth Sphere"
+    ],
+    "Concept4_value": [
+        0.49,
+        0.17,
+        0.35,
+        [
+            0.15,
+            0.05
+        ],
+        0.11,
+        1.01,
+        0.15,
+        1.13,
+        0.5,
+        1.0
+    ],
+    "Concept4_score": [
+        0.32,
+        0.35,
+        0.37,
+        0.38,
+        0.36,
+        0.33,
+        0.36,
+        0.61,
+        0.34,
+        0.35
+    ],
+    "Concept4_diagnosis_support": [
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "OCDegen",
+        "OCDegen",
+        "Healthy"
+    ],
+    "Concept5_concept": [
+        [
+            "No Roll",
+            "& Moderate Pitch"
+        ],
+        "Slightly Extended Head",
+        "Low Spine Bend",
+        "Low Spine Bend",
+        [
+            "Main Bones: Smooth Sphere",
+            "& Medium-Low Spine Bend"
+        ],
+        [
+            "Sec. Bones: Rounded Cuboids",
+            "& Slightly Extended Head"
+        ],
+        [
+            "Main Bones: Sharp Cuboids",
+            "& Slightly Extended Head"
+        ],
+        "Medium-High Spine Bend",
+        "Sec. Bones: Blocky Spheres",
+        [
+            "Main Bones: Smooth Sphere",
+            "& Slightly Extended Head"
+        ]
+    ],
+    "Concept5_value": [
+        [
+            -0.04,
+            0.4
+        ],
+        0.48,
+        0.06,
+        0.05,
+        [
+            0.86,
+            0.11
+        ],
+        [
+            0.41,
+            0.35
+        ],
+        [
+            0.15,
+            0.45
+        ],
+        0.25,
+        0.75,
+        [
+            1.0,
+            0.33
+        ]
+    ],
+    "Concept5_score": [
+        0.24,
+        0.34,
+        0.35,
+        0.36,
+        0.32,
+        0.09,
+        0.3,
+        0.56,
+        0.28,
+        0.28
+    ],
+    "Concept5_diagnosis_support": [
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "Healthy",
+        "OCDegen",
+        "Healthy",
+        "Healthy"
+    ]
+}

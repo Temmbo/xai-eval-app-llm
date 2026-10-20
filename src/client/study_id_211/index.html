@@ -19,11 +19,11 @@
     
     <!-- HEADER  -->
     <header>
-      <h1>Blockies OCDegen Diagnosis Support</h1>
+      <h1>Blockies Diagnosis Support</h1>
 
       <div class="progress-bar-container">
         <div class="progress-bar"></div>
-        <div class="progress-text" id="progress-bar-text">Diagnosis 5/10</div>
+        <div class="progress-text" id="progress-bar-text">Loading study...</div>
       </div>
 
       <!-- hidden placeholders the JS still updates -->
@@ -52,7 +52,7 @@
           </div>
         </div>
 
-        <!-- SHAP image card -->
+        <!-- WOE explanation image card -->
         <div class="card-row1-col2-3-4-5">
           <div id="concept-card-1-title" class="title"></div>
           
@@ -60,15 +60,15 @@
             <img id="concept-card-1-image"
                 class="image"
                 src=""
-                alt="SHAP Image" />
+                alt="WOE explanation graph" />
           </div>
 
           <!-- Diagnosis hypothesis selector: click a hypothesis to preview its explanation graph -->
           <div class="hypothesis-selector" id="hypothesis-selector">
             <button type="button" class="hypothesis-btn active" data-hypothesis="healthy">Healthy</button>
-            <button type="button" class="hypothesis-btn" data-hypothesis="illness-1">Illness&nbsp;1</button>
-            <button type="button" class="hypothesis-btn" data-hypothesis="illness-2">Illness&nbsp;2</button>
-            <button type="button" class="hypothesis-btn" data-hypothesis="illness-3">Illness&nbsp;3</button>
+            <button type="button" class="hypothesis-btn" data-hypothesis="bone-degen">Bone Degen</button>
+            <button type="button" class="hypothesis-btn" data-hypothesis="overbending">Overbending</button>
+            <button type="button" class="hypothesis-btn" data-hypothesis="weak-spine">Weak Spine</button>
           </div>
         </div>
       </div> <!-- /main-row1 -->
@@ -82,7 +82,7 @@
           <h3 class="title">Blocky Diagnosis:</h3>
           
           <div class="toggle-hint">Before making your diagnosis, review the Blocky
-            and note which OCDegen symptoms are present. When you're ready, click
+            and note which diagnosis-specific features are present. When you're ready, click
             anywhere in this card to view the AI's suggestion, the true diagnosis,
             and the confirmed symptoms. You'll then be able to select your own diagnosis.
           </div>
@@ -113,11 +113,27 @@
               </label>
 
               <label class="unhealthy-label">
-                <input id="radio-unhealthy"
+                <input id="radio-weak-spine"
                        type="radio"
                        name="health"
-                       value="unhealthy" />
-                OCDegen
+                       value="weak_spine" />
+                Weak Spine
+              </label>
+
+              <label class="unhealthy-label">
+                <input id="radio-bone-degen"
+                       type="radio"
+                       name="health"
+                       value="bone_degen" />
+                Bone Degen
+              </label>
+
+              <label class="unhealthy-label">
+                <input id="radio-overbending"
+                       type="radio"
+                       name="health"
+                       value="overbending" />
+                Overbending
               </label>
             </div>
           </div> <!-- /card-content -->
@@ -148,9 +164,9 @@
           <h3 class="card-warning">Important</h3>
           <div class="card-warning-text">
             <ul class="card-warning-list">
-              <li><strong>OCDegen can be fatal</strong> if not treated early.</li>
-              <li>Treatment is <strong>costly and highly invasive</strong>.</li>
-              <li><strong>Verify all diagnoses</strong> before finalizing.</li>
+              <li>Review the X-ray and explanation before deciding.</li>
+              <li>The AI suggestion may not be correct.</li>
+              <li><strong>Select the best-fitting diagnosis</strong> before continuing.</li>
             </ul>
           </div>
         </div><!-- <div class="card-row2-col1">  -->
@@ -169,4 +185,3 @@
   </div>
 </body>
 </html>
-

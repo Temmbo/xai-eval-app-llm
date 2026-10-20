@@ -23,7 +23,7 @@ const x_ray_trait_span = document.getElementById("X_RAY_Trait");
 const button_llm_prompt = document.getElementById("send-button");
 const llm_prompt_input = document.getElementById("chat-input");
 
-// Diagnosis hypothesis selector (Healthy / Illness 1 / 2 / 3) in the SHAP
+// Diagnosis hypothesis selector (Healthy / Bone Degen / Overbending / Weak Spine) in the WOE
 // explanation card.
 const hypothesis_selector = document.getElementById("hypothesis-selector");
 const hypothesis_buttons = document.querySelectorAll(".hypothesis-btn");
@@ -68,23 +68,27 @@ function get_radio_button_status()
 }
 
 function set_participant_diagnosis(val) {
-
-    if (typeof val === "string") {
-        val = val.toLowerCase();
-    } else {
-        console.error("Invalid diagnosis string received from DB");
+    clear_radio_buttons();
+    if (typeof val !== "string") {
+        console.error("Invalid diagnosis string received from DB:", val);
         return false;
     }
 
-    if (val === "healthy") {
-        document.getElementById("radio-healthy").checked = true;
-    } else if (val === "ocdegen") {
-        document.getElementById("radio-unhealthy").checked = true;
-    } else {
-        console.error("Invalid value:", val);
+    const diagnosis_value = val.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    const legacy_values = ["ocdegen", "unhealthy"];
+    if (legacy_values.includes(diagnosis_value)) {
+        console.warn(
+            `Stored diagnosis "${val}" uses the previous two-class scheme; please select one of the four diagnoses again.`
+        );
         return false;
     }
 
+    const radio = Array.from(radio_buttons).find((button) => button.value === diagnosis_value);
+    if (!radio) {
+        console.error("Unknown diagnosis string received from DB:", val);
+        return false;
+    }
+    radio.checked = true;
     return true;
 }
 
@@ -247,6 +251,7 @@ function db_update_success_action(participant_id, study_id, current_page_nr) {
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
     button_toggle_next_or_submit();
     log_page_visit(participant_id, study_id, page_nr);
+    reset_templates();
     sync_blocky_prediction_to_backend(page_nr);
 }
 
@@ -296,6 +301,7 @@ function db_update_duplicate_entry_action(participant_id, study_id, current_page
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
     log_page_visit(participant_id, study_id, page_nr);
+    reset_templates();
     sync_blocky_prediction_to_backend(page_nr);
 }
 
@@ -343,88 +349,21 @@ function get_or_create_llm_session_id() {
     return `${participant_id}_${study_id}`;
 }
 
-// input.json encodes a compound concept (e.g. "Medium-Low Spine Bend &
-// Slightly Extended Head") as two parallel arrays: concept_raw is an array
-// of trait names, value_raw the matching array of per-trait values. A plain
-// row has both as plain scalars instead. This turns either shape into the
-// backend's Concept payload: {name, value?, score, diagnosis_support,
-// components?} - `components` only appears for the compound case, one
-// entry per sub-trait, so no sub-value ever has to be dropped or guessed.
-function build_concept_payload(concept_raw, value_raw, score, diagnosis_support) {
-    const is_compound = Array.isArray(concept_raw) || Array.isArray(value_raw);
-
-    if (!is_compound) {
-        return {
-            name: concept_raw,
-            value: value_raw,
-            score: score,
-            diagnosis_support: diagnosis_support
-        };
-    }
-
-    const names = Array.isArray(concept_raw) ? concept_raw : [concept_raw];
-    const values = Array.isArray(value_raw) ? value_raw : [value_raw];
-
-    if (names.length !== values.length) {
-        console.warn(
-            "Concept name/value length mismatch, using shorter length:",
-            concept_raw, value_raw
-        );
-    }
-
-    const pair_count = Math.min(names.length, values.length);
-    const components = [];
-    for (let i = 0; i < pair_count; i++) {
-        components.push({
-            // Strip a leading "& " continuation marker so component names
-            // read as standalone traits, e.g. "& Slightly Extended Head"
-            // -> "Slightly Extended Head".
-            name: String(names[i]).replace(/^&\s*/, ""),
-            value: values[i]
-        });
-    }
-
-    return {
-        name: names.join(" "),
-        score: score,
-        diagnosis_support: diagnosis_support,
-        components: components
-    };
-}
-
-async function sync_blocky_prediction_to_backend(page_nr) {
+async function sync_blocky_prediction_to_backend(page_nr, selectedHypothesis = get_selected_hypothesis()) {
     const session_id = get_or_create_llm_session_id();
  
     // attr = [patient_id, image, x_ray_loc, true_diag, suggested_diag, trait]
     const attr = csv_json_get_main_attributes(page_nr);
     const suggested_diag = attr[4];
+    const currentlySelectedHypothesis = hypothesis_image_keys[selectedHypothesis];
+    if (!currentlySelectedHypothesis) {
+        console.error(`Cannot sync blocky context: unknown selected hypothesis "${selectedHypothesis}"`);
+        return;
+    }
 
-    // The backend's "concepts" field is a list of Concept objects, each
-    // {name, value, score, diagnosis_support} (plus an optional
-    // `components` list for compound concepts - see build_concept_payload
-    // below). All 5 concept slots from input.json are sent.
-    const conceptsList = csv_json_get_concept_attributes(page_nr);
-
-    // Map to the backend's Concept shape. Most rows are a simple
-    // {concept: string, value: number} pair, but some are compound - two
-    // parallel arrays like concept: ["Main Bones: Sharp Cuboids",
-    // "& Slightly Extended Head"], value: [0.15, 0.45]. build_concept_payload
-    // turns those into an explicit `components` list instead of silently
-    // dropping them.
-    const concepts = conceptsList
-        .filter(c => {
-            const ok = typeof c.score === "number" && !!c.diagnosis_support;
-            if (!ok) {
-                console.warn(
-                    `Skipping malformed concept (page ${page_nr}):`, c
-                );
-            }
-            return ok;
-        })
-        .map(c => build_concept_payload(c.concept, c.value, c.score, c.diagnosis_support));
-
-    if (concepts.length === 0) {
-        console.warn(`Skipping blocky context sync (page ${page_nr}): no valid concepts`);
+    const woeFeatures = csv_json_get_woe_attributes(page_nr);
+    if (Object.values(woeFeatures).every(features => features.length === 0)) {
+        console.warn(`Skipping blocky context sync (page ${page_nr}): no valid WoE features`);
         return;
     }
  
@@ -436,8 +375,11 @@ async function sync_blocky_prediction_to_backend(page_nr) {
             },
             body: JSON.stringify({
                 session_id: session_id,
-                prediction: suggested_diag,
-                concepts: concepts
+                xai_context: {
+                    prediction: suggested_diag,
+                    currently_selected_hypothesis: currentlySelectedHypothesis,
+                    woe_features: woeFeatures
+                }
             })
         });
  
@@ -553,6 +495,49 @@ async function get_template_from_llm() {
     }
 }
 
+async function reset_templates() {
+    // This function resets the template buttons to their default state. Used every time a new page or sample is loaded.
+    const session_id = get_or_create_llm_session_id();
+    const templateButtons = [
+        document.getElementById("llm-template-1"),
+        document.getElementById("llm-template-2"),
+        document.getElementById("llm-template-3")
+    ];
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/reset_templates`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ session_id: session_id })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Server responded ${response.status}: ${errText}`);
+        }
+
+        const data = await response.json();
+
+        // Populate the buttons with the received templates
+        templateButtons.forEach((button, index) => {
+            if (data.templates[index]) {
+                button.textContent = data.templates[index];
+                button.disabled = false;
+                button.onclick = () => {
+                    llm_prompt_input.value = data.templates[index];
+                    llm_button_action();
+                };
+            } else {
+                button.textContent = "No template available";
+                button.disabled = true;
+            }
+        });
+    } catch (error) {
+        console.error('Error resetting templates:', error);
+    }
+}
+
 
 async function db_get_and_set_participant_diagnosis_prev_button_click(participant_id, study_id, page_nr) {
     console.log("db_get_and_set_participant_diagnosis_prev_button_click");
@@ -632,12 +617,13 @@ async function radio_button_changed() {
 }
 
 function set_suggested_diag(value) {
-    suggested_diag1.textContent = value;
-    suggested_diag2.textContent = value;
+    const display_value = format_diagnosis(value);
+    suggested_diag1.textContent = display_value;
+    suggested_diag2.textContent = display_value;
 
     p_card = document.getElementById("patient-card");
 
-    if (value == "OCDegen") {
+    if (is_illness_diagnosis(value)) {
         // suggested_diag1.className = "";
         suggested_diag2.className = "";
         // suggested_diag1.className = "unhealthy"
@@ -661,15 +647,26 @@ function set_x_ray_location(value)
 
 function set_true_diag(value)
 {
-    true_diag.textContent = value;
-    if(value == "OCDegen"){
-        true_diag.className = ""
-        true_diag.className = "unhealthy"
-    }else{
-        true_diag.className = ""
-        true_diag.className = "healthy"
-    }
+    true_diag.textContent = format_diagnosis(value);
+    true_diag.className = is_illness_diagnosis(value) ? "unhealthy" : "healthy";
 
+}
+
+function format_diagnosis(value) {
+    const labels = {
+        healthy: "Healthy",
+        weak_spine: "Weak Spine",
+        bone_degen: "Bone Degen",
+        overbending: "Overbending",
+        ocdegen: "OCDegen",
+        unhealthy: "OCDegen"
+    };
+    const key = String(value).trim().toLowerCase().replace(/[\s-]+/g, "_");
+    return labels[key] || value;
+}
+
+function is_illness_diagnosis(value) {
+    return String(value).trim().toLowerCase() !== "healthy";
 }
 
 //get total pagecount for the study
@@ -688,7 +685,7 @@ function csv_json_get_main_attributes(page_nr)
     }
 
     l_patient_id = input.PATIENT_ID[index];
-    l_x_ray_loc  = input.X_RAY_LOCATION[index];
+    l_x_ray_loc  = input.X_RAY_LOCATION?.[index] ?? "";
     l_true_diag = input.TRUE_DIAG[index];
     l_suggested_diag = input.SUGGESTED_DIAG[index];
     l_image = "img/" + input.X_RAY_IMAGE[index];
@@ -715,46 +712,82 @@ function csv_json_get_all_attributes_and_set_in_html_page(page_nr)
     set_additional_attributes_in_html_page(page_nr, attr);
 }
 
-function csv_json_get_concept_attributes(page_nr)
+function csv_json_get_woe_attributes(page_nr)
 {
-    index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
-
-    concepts = [];
-    for (let c = 1; c <= 5; c++) {
-        concepts.push({
-            concept: input[`Concept${c}_concept`][index],
-            value: input[`Concept${c}_value`][index],
-            score: input[`Concept${c}_score`][index],
-            diagnosis_support: input[`Concept${c}_diagnosis_support`][index],
-        });
+    const index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
+    const woeFeatures = {};
+    const hypotheses = Object.values(hypothesis_image_keys);
+    for (const hypothesis of hypotheses) {
+        woeFeatures[hypothesis] = [];
+        for (const [feature, class_features] of Object.entries(input.WOE_FEATURES)) {
+            const rawValue = class_features[hypothesis]?.[index];
+            const numericValue = typeof rawValue === "number" ||
+                (typeof rawValue === "string" && rawValue.trim() !== "")
+                ? Number(rawValue)
+                : NaN;
+            let value;
+            if (Number.isFinite(numericValue)) {
+                value = numericValue;
+            } else if (typeof rawValue === "string" && rawValue.trim().toLowerCase() === "-inf") {
+                value = rawValue;
+            } else {
+                console.warn(
+                    `Skipping invalid WOE value for ${feature} (${hypothesis}) on page ${page_nr}:`,
+                    rawValue
+                );
+                continue;
+            }
+            woeFeatures[hypothesis].push({
+                feature: feature,
+                value: value,
+            });
+        }
     }
 
-    return concepts;
+    return woeFeatures;
 }
 
 function csv_json_get_additional_attributes(page_nr)
 {
-    index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
-    l_patient_id = input.PATIENT_ID[index];
-    concept_card_1_title    = "Important Features";
-    // concept_card_1_image    = "img/"       + input.Shap[index];
-    concept_card_1_image    = "img/" + input.contribution_plot[index];
-    attributes = [concept_card_1_title, concept_card_1_image];
-    return attributes;
+    return ["WOE Explanation"];
 }
 
 function set_additional_attributes_in_html_page(page_nr, attr)
 {
     document.getElementById("concept-card-1-title").textContent = attr[0];
-    document.getElementById("concept-card-1-image").src = attr[1];
-    document.getElementById("concept-card-1-caption").textContent = attr[2];
+    set_hypothesis_graph(page_nr, get_selected_hypothesis());
+    document.getElementById("concept-card-1-caption").textContent = "";
 }
 
-// --- Diagnosis hypothesis selector (Healthy / Illness 1 / 2 / 3) ---------
-// Handles ONLY the clicking/highlighting behaviour of the selector in the
-// SHAP explanation card. Loading/swapping the corresponding explanation
-// graph per hypothesis is not implemented yet - hypothesis_selected() below
-// is where that data-switching logic can be added later.
+const hypothesis_image_keys = {
+    healthy: "healthy",
+    "bone-degen": "bone_degen",
+    overbending: "overbending",
+    "weak-spine": "weak_spine"
+};
+
+function get_selected_hypothesis() {
+    const active_button = document.querySelector(".hypothesis-btn.active");
+    return active_button ? active_button.dataset.hypothesis : "healthy";
+}
+
+function set_hypothesis_graph(page_nr, hypothesis) {
+    const index = window.shuffledIndices[page_nr - 1];
+    const image_key = hypothesis_image_keys[hypothesis];
+    const image_name = input.EXPLANATION_IMAGE?.[image_key]?.[index];
+    const image = document.getElementById("concept-card-1-image");
+    if (!image_name) {
+        showError(`No WOE explanation image for hypothesis "${hypothesis}" on sample ${index + 1}.`);
+        image.removeAttribute("src");
+        return;
+    }
+    image.onerror = () => showError(`Could not load WOE explanation image "${image_name}".`);
+    image.src = `img/${image_name}`;
+    image.alt = `${hypothesis.replace(/-/g, " ")} WOE explanation graph`;
+}
+
+// --- Diagnosis hypothesis selector --------------------------------------
+// Switches the WOE explanation graph to the selected diagnosis hypothesis.
 
 function set_active_hypothesis_button(hypothesis) {
     hypothesis_buttons.forEach((btn) => {
@@ -763,8 +796,9 @@ function set_active_hypothesis_button(hypothesis) {
 }
 
 function hypothesis_selected(hypothesis) {
-    console.log("Hypothesis selected:", hypothesis);
-    // TODO: load/display the explanation graph for this hypothesis.
+    const page_nr = get_page_nr_from_url();
+    set_hypothesis_graph(page_nr, hypothesis);
+    sync_blocky_prediction_to_backend(page_nr, hypothesis);
 }
 
 async function load_json_data() {
@@ -782,7 +816,9 @@ async function load_json_data() {
         // Study doesn't start via the "Weiter" button, so sync the
         // first blocky's prediction here once init_page() has set it up.
         const start_page_nr = get_page_nr_from_url();
+        reset_templates(); // Reset the LLM template buttons for the new page
         sync_blocky_prediction_to_backend(start_page_nr);
+
     } catch (error) {
         console.error("There was a problem with the fetch operation:", error);
         input = null;  // Reset input in case of error
@@ -856,6 +892,8 @@ window.addEventListener('popstate', () => {
 
     // Refresh the main content for the new page number
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
+    reset_templates(); // Reset the LLM template buttons for the new page
+    sync_blocky_prediction_to_backend(page_nr); // Sync the blocky prediction for the new page
 
     // Re-load any diagnosis already stored for that page
     db_get_and_set_participant_diagnosis(

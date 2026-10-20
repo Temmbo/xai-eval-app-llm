@@ -66,24 +66,30 @@ async function init_page() {
         return;
     }
 
-    const up = get_params_from_url();
-    let n_correct;
-    let start_indices;
-    if (up.total_pages === '30') {
-        n_correct = 6
-        start_indices = [0, 1, 2, 3, 4, 5];
-    } else {
-        n_correct = 4   
-        start_indices = [0, 1, 2, 3];
+    if (!Array.isArray(input.PATIENT_ID) || input.PATIENT_ID.length === 0) {
+        showError('Study data has no patient samples.');
+        return;
     }
+
+    const up = get_params_from_url();
+    const totalPages = input.PATIENT_ID.length;
+    const n_correct = Math.min(totalPages, totalPages === 30 ? 6 : 4);
+    const start_indices = Array.from({ length: n_correct }, (_, idx) => idx);
+
+    let page_nr = get_page_nr_from_url();
+    if (!Number.isInteger(page_nr) || page_nr < 1 || page_nr > totalPages) {
+        page_nr = 1;
+    }
+    const page_url = new URL(window.location.href);
+    page_url.searchParams.set('page_nr', page_nr);
+    page_url.searchParams.set('total_pages', totalPages);
+    history.replaceState(null, '', page_url);
 
     console.log('App is running!');
     let participant_id = get_participant_id_from_url();
     let study_id = get_study_id_from_url();
-    let page_nr = get_page_nr_from_url();
 
     // randomize study indices for counterbalancing
-    const totalPages = Math.max(0, parseInt(up.total_pages, 10) || 0);
     const indices = Array.from({ length: totalPages - n_correct }, (_, idx) => idx + n_correct);
 
     // 2) Seed from participant ID
@@ -93,7 +99,7 @@ async function init_page() {
     // 3) Shuffle deterministically
     let shuffledIndicesStart = [];
     let shuffledIndices = [];
-    if (up.study_id === 10) {
+    if (Number(up.study_id) === 10) {
         // no need to shuffle for tutorial phase
         shuffledIndicesStart = start_indices;
         shuffledIndices = indices;
