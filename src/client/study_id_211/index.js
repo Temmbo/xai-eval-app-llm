@@ -6,6 +6,8 @@
 
 
 let input = null;
+let chat_history = [];
+let chat_history_loaded = false;
 const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:8000`;
 const button_next = document.getElementById("button-next");
 const button_prev = document.getElementById("button-prev");
@@ -246,6 +248,7 @@ function db_update_success_action(participant_id, study_id, current_page_nr) {
     page_nr = current_page_nr + 1;
     up = get_params_from_url();
     update_study_url(participant_id, study_id, up.study_type, page_nr, up.total_pages);
+    load_chat_history();
     clear_radio_buttons();
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
@@ -297,6 +300,7 @@ function db_update_duplicate_entry_action(participant_id, study_id, current_page
     page_nr = current_page_nr + 1;
     up = get_params_from_url();
     update_study_url(participant_id, study_id, up.study_type, page_nr, up.total_pages);
+    load_chat_history();
     clear_radio_buttons();
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
@@ -349,6 +353,82 @@ function get_or_create_llm_session_id() {
     return `${participant_id}_${study_id}`;
 }
 
+function render_chat_history() {
+    const chatArea = document.getElementById("llm-chat-messages");
+    chatArea.replaceChildren();
+
+    if (chat_history.length === 0) {
+        const greeting = document.createElement("div");
+        greeting.className = "message bot-message";
+        greeting.textContent = "Hi! How can I help?";
+        chatArea.appendChild(greeting);
+    }
+
+    chat_history.forEach(({ role, content }) => {
+        const message = document.createElement("div");
+        message.className = `message ${role === "user" ? "user-message" : "bot-message"}`;
+        message.textContent = `${role === "user" ? "You" : "LLM"}: ${content}`;
+        chatArea.appendChild(message);
+    });
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function load_chat_history() {
+    const participant_id = get_participant_id_from_url();
+    const study_id = get_study_id_from_url();
+    const page_nr = get_page_nr_from_url();
+    chat_history = [];
+    chat_history_loaded = false;
+    render_chat_history();
+
+    if (!participant_id || !study_id || !Number.isInteger(page_nr)) {
+        console.error("Cannot load chat history: missing participant, study, or page ID.");
+        return;
+    }
+
+    const query = new URLSearchParams({ participant_id, study_id, page_nr });
+    try {
+        const response = await fetch(`/read_chat_history?${query}`);
+        if (!response.ok) {
+            throw new Error(`Server responded ${response.status}: ${await response.text()}`);
+        }
+        const data = await response.json();
+        if (
+            participant_id !== get_participant_id_from_url() ||
+            study_id !== get_study_id_from_url() ||
+            page_nr !== get_page_nr_from_url()
+        ) {
+            return;
+        }
+        chat_history = Array.isArray(data.messages) ? data.messages : [];
+        chat_history_loaded = true;
+        render_chat_history();
+    } catch (error) {
+        console.error("Error loading chat history:", error);
+        const chatArea = document.getElementById("llm-chat-messages");
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "message bot-message error";
+        errorMessage.textContent = "Chat history could not be loaded. Please refresh the page.";
+        chatArea.appendChild(errorMessage);
+    }
+}
+
+async function save_chat_history(page_nr, messages) {
+    const response = await fetch("/write_chat_history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            participant_id: get_participant_id_from_url(),
+            study_id: get_study_id_from_url(),
+            page_nr,
+            messages
+        })
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to save chat history: ${response.status} ${await response.text()}`);
+    }
+}
+
 async function sync_blocky_prediction_to_backend(page_nr, selectedHypothesis = get_selected_hypothesis()) {
     const session_id = get_or_create_llm_session_id();
  
@@ -395,6 +475,11 @@ async function sync_blocky_prediction_to_backend(page_nr, selectedHypothesis = g
 
 async function llm_button_action()
 {
+    if (!chat_history_loaded) {
+        alert("Chat history is not available yet. Please wait or refresh the page.");
+        return;
+    }
+
     let user_input = llm_prompt_input.value.trim();
     if(user_input == ""){
         alert("Please enter a prompt before sending to the LLM.");
@@ -403,18 +488,17 @@ async function llm_button_action()
  
     const session_id = get_or_create_llm_session_id();
     const chatArea = document.getElementById("llm-chat-messages");
- 
-    // Show the user's message immediately
-    const userMessage = document.createElement("div");
-    userMessage.className = "message user-message";
-    userMessage.textContent = `You: ${user_input}`;
-    chatArea.appendChild(userMessage);
+    const page_nr = get_page_nr_from_url();
+    const page_history = chat_history;
+    page_history.push({ role: "user", content: user_input });
+    render_chat_history();
  
     // Clear input right away for responsiveness
     llm_prompt_input.value = "";
     button_llm_prompt.disabled = true;
  
     try {
+        await save_chat_history(page_nr, page_history);
         const response = await fetch(`${API_BASE_URL}/api/chat`, {
             method: 'POST',
             headers: {
@@ -432,19 +516,19 @@ async function llm_button_action()
         }
  
         const data = await response.json();
- 
-        const botMessage = document.createElement("div");
-        botMessage.className = "message bot-message";
-        botMessage.textContent = `LLM: ${data.answer}`;
-        chatArea.appendChild(botMessage);
- 
-        chatArea.scrollTop = chatArea.scrollHeight;
+        page_history.push({ role: "assistant", content: String(data.answer) });
+        if (page_history === chat_history) {
+            render_chat_history();
+        }
+        await save_chat_history(page_nr, page_history);
         get_template_from_llm(); // Refresh the template buttons after each LLM response
     } catch (error) {
-        console.error('Error:', error);
+        console.error("Error processing or saving chat message:", error);
         const errorMessage = document.createElement("div");
         errorMessage.className = "message bot-message error";
-        errorMessage.textContent = "There was an error processing your request. Please try again.";
+        errorMessage.textContent = error.message.startsWith("Failed to save chat history")
+            ? "Your chat could not be saved. Please check your connection and try again."
+            : "There was an error processing your request. Please try again.";
         chatArea.appendChild(errorMessage);
     } finally {
         button_llm_prompt.disabled = false;
@@ -550,6 +634,7 @@ async function db_get_and_set_participant_diagnosis_prev_button_click(participan
             //First URL Update
             up = get_params_from_url();
             update_study_url(participant_id, study_id, up.study_type, page_nr, up.total_pages);
+            load_chat_history();
             set_participant_diagnosis(diagnosis);
             //Set all attributes from csv_json info
             csv_json_get_all_attributes_and_set_in_html_page(page_nr);
@@ -816,6 +901,7 @@ async function load_json_data() {
         // Study doesn't start via the "Weiter" button, so sync the
         // first blocky's prediction here once init_page() has set it up.
         const start_page_nr = get_page_nr_from_url();
+        await load_chat_history();
         reset_templates(); // Reset the LLM template buttons for the new page
         sync_blocky_prediction_to_backend(start_page_nr);
 
@@ -891,6 +977,7 @@ window.addEventListener('popstate', () => {
     const page_nr = get_page_nr_from_url();
 
     // Refresh the main content for the new page number
+    load_chat_history();
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
     reset_templates(); // Reset the LLM template buttons for the new page
     sync_blocky_prediction_to_backend(page_nr); // Sync the blocky prediction for the new page

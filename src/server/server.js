@@ -23,7 +23,14 @@ function init() {
     app.use(express.urlencoded({ extended: true }));
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(express.static(path.join(__dirname, project_root, client_ui_web_pages_location)));
-    db_init();
+    db_init((err) => {
+        if (err) {
+            console.error("Failed to initialize database schema:", err.message);
+            process.exitCode = 1;
+            return;
+        }
+        start_http_server(PORT);
+    });
 }
 
 function start_http_server(port) {
@@ -48,7 +55,7 @@ function db_create_or_open()
     module.exports = db;
 }
 
-function db_table_init()
+function db_table_init(on_complete)
 {
     // Create table if it doesn't exist
     db.serialize(() => {
@@ -104,12 +111,29 @@ function db_table_init()
                 END;`
         );
     });
+
+    db.run(`CREATE TABLE IF NOT EXISTS participant_chat_history (
+                participant_id TEXT NOT NULL,
+                study_id INTEGER NOT NULL,
+                page_nr INTEGER NOT NULL,
+                messages TEXT NOT NULL,
+                created_at INTEGER DEFAULT (strftime('%s', 'now')),
+                updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+                PRIMARY KEY (participant_id, study_id, page_nr)
+            )`,
+        (err) => {
+            if (err) {
+                console.error("Error initializing participant_chat_history table:", err.message);
+            }
+            on_complete(err);
+        }
+    );
 }
 
-function db_init()
+function db_init(on_complete)
 {
     db_create_or_open();
-    db_table_init();
+    db_table_init(on_complete);
 }
 
 // Register a POST route
@@ -126,23 +150,6 @@ function register_get_event(route, callback) {
     });
 }
 
-/*
-function cb_event_write_db(req, res)
-{
-    const { participant_id,study_id,xray_image,participant_diagnosis, page_nr} = req.body;
-    console.log(`Saving to database: participant_id=${participant_id}, study_id=${study_id}, xray_image=${xray_image}, participant_diagnosis=${participant_diagnosis}, page_nr=${page_nr}`);
-
-    let p_diagnosis = (participant_diagnosis === "healthy") ? "Healthy" : "OCDegen";
-
-    db.run(`INSERT INTO participant_feedback (participant_id, study_id, xray_image, participant_diagnosis, page_nr) VALUES (?, ?, ?, ?, ?)`, [participant_id, study_id, xray_image, p_diagnosis, page_nr], (err) => {
-        if (err) {
-            return res.status(500).send('Error saving data');
-        }
-        res.json({ message: "Data stored successfully!" });
-    });
-}
-*/
-
 /* 1. Checks if an entry exists with the same participant_id, study_id, and page_nr
  * 2. If an entry exists  -> Updates participant_diagnosis and xray_image
  * 3. If no entry         -> Inserts a new record into the database
@@ -152,7 +159,30 @@ function cb_event_write_db(req, res) {
 
     console.log(`Checking database for existing entry: participant_id=${participant_id}, study_id=${study_id}, page_nr=${page_nr}`);
 
-    let p_diagnosis = (participant_diagnosis === "healthy") ? "Healthy" : "OCDegen";
+    const diagnosis_labels = {
+        healthy: "Healthy",
+        weak_spine: "Weak Spine",
+        bone_degen: "Bone Degen",
+        overbending: "Overbending",
+        unhealthy: "OCDegen",
+        ocdegen: "OCDegen"
+    };
+    const diagnosis_key = typeof participant_diagnosis === "string"
+        ? participant_diagnosis.trim().toLowerCase().replace(/[\s-]+/g, "_")
+        : "";
+    const p_diagnosis = Object.prototype.hasOwnProperty.call(diagnosis_labels, diagnosis_key)
+        ? diagnosis_labels[diagnosis_key]
+        : null;
+
+    if (!participant_id || !study_id || !xray_image || page_nr == null) {
+        return res.status(400).json({ error: "Missing required feedback fields" });
+    }
+    if (!p_diagnosis) {
+        return res.status(400).json({
+            error: "Invalid diagnosis",
+            allowed_diagnoses: ["healthy", "weak_spine", "bone_degen", "overbending"]
+        });
+    }
 
     // First, check if an entry already exists
     db.get(
@@ -167,7 +197,7 @@ function cb_event_write_db(req, res) {
             if (row) {
                 // If entry exists, update it
                 const oldDiagnosis = row.participant_diagnosis;
-                if (oldDiagnosis === p_diagnosis) {
+                if (oldDiagnosis === p_diagnosis && row.xray_image === xray_image) {
                     console.log("Diagnosis unchanged, skipping update.");
                     return res.json({ message: "Diagnosis unchanged, no update needed." });
                 }
@@ -257,17 +287,102 @@ function cb_event_log_visit(req, res) {
     );
 };
 
+function cb_event_write_chat_history(req, res) {
+    const { participant_id, study_id, page_nr, messages } = req.body;
+    const parsed_study_id = Number(study_id);
+    const parsed_page_nr = Number(page_nr);
 
+    if (
+        typeof participant_id !== "string" ||
+        participant_id.trim() === "" ||
+        !Number.isInteger(parsed_study_id) ||
+        parsed_study_id < 1 ||
+        !Number.isInteger(parsed_page_nr) ||
+        parsed_page_nr < 1 ||
+        !Array.isArray(messages) ||
+        messages.some(message =>
+            !message ||
+            !["user", "assistant"].includes(message.role) ||
+            typeof message.content !== "string"
+        )
+    ) {
+        return res.status(400).json({ error: "Invalid chat history fields" });
+    }
+
+    const serialized_messages = JSON.stringify(messages);
+    db.run(
+        `INSERT INTO participant_chat_history (participant_id, study_id, page_nr, messages)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT (participant_id, study_id, page_nr)
+         DO UPDATE SET messages = excluded.messages, updated_at = strftime('%s', 'now')`,
+        [participant_id.trim(), parsed_study_id, parsed_page_nr, serialized_messages],
+        (err) => {
+            if (err) {
+                console.error("Database error saving chat history:", err.message);
+                return res.status(500).json({ error: "Error saving chat history" });
+            }
+            return res.json({ success: true });
+        }
+    );
+}
+
+function cb_event_read_chat_history(req, res) {
+    const { participant_id, study_id, page_nr } = req.query;
+    const parsed_study_id = Number(study_id);
+    const parsed_page_nr = Number(page_nr);
+
+    if (
+        typeof participant_id !== "string" ||
+        participant_id.trim() === "" ||
+        !Number.isInteger(parsed_study_id) ||
+        parsed_study_id < 1 ||
+        !Number.isInteger(parsed_page_nr) ||
+        parsed_page_nr < 1
+    ) {
+        return res.status(400).json({ error: "Invalid chat history fields" });
+    }
+
+    db.get(
+        `SELECT messages FROM participant_chat_history
+         WHERE participant_id = ? AND study_id = ? AND page_nr = ?`,
+        [participant_id.trim(), parsed_study_id, parsed_page_nr],
+        (err, row) => {
+            if (err) {
+                console.error("Database error reading chat history:", err.message);
+                return res.status(500).json({ error: "Error reading chat history" });
+            }
+            if (!row) {
+                return res.json({ messages: [] });
+            }
+            try {
+                return res.json({ messages: JSON.parse(row.messages) });
+            } catch (parse_error) {
+                console.error("Invalid chat history stored in database:", parse_error);
+                return res.status(500).json({ error: "Stored chat history is invalid" });
+            }
+        }
+    );
+}
 
 function cb_event_read_db(req, res) {
-    db.all("SELECT * FROM participant_feedback", [], (err, rows) => {
-        if (err) {
-            console.error("Database Error:", err);
-            res.status(500).json({ error: "Error reading data" });
-            return;
+    db.all(
+        `SELECT participant_feedback.*,
+                COALESCE(participant_chat_history.messages, '[]') AS chat_history
+         FROM participant_feedback
+         LEFT JOIN participant_chat_history
+            ON participant_feedback.participant_id = participant_chat_history.participant_id
+            AND participant_feedback.study_id = participant_chat_history.study_id
+            AND participant_feedback.page_nr = participant_chat_history.page_nr`,
+        [],
+        (err, rows) => {
+            if (err) {
+                console.error("Database Error:", err);
+                res.status(500).json({ error: "Error reading data" });
+                return;
+            }
+            res.json(rows);
         }
-        res.json(rows);
-    });
+    );
 }
 
 function cb_event_read_db_prev(req, res) {
@@ -320,7 +435,56 @@ function get_study_details(study_id) {
                 console.error(`Study table not created or record not available: ${row}`);
                 return reject({ study_type: -2, total_pages: -2 }); // Handle missing record
             }
-            resolve({ study_type: parseInt(row.study_type), total_pages: parseInt(row.total_pages) });
+            const input_json_path = path.join(
+                __dirname,
+                project_root,
+                client_ui_web_pages_location,
+                `study_id_${study_id}`,
+                'input.json'
+            );
+            fs.readFile(input_json_path, 'utf8', (read_err, contents) => {
+                if (read_err) {
+                    if (read_err.code === 'ENOENT') {
+                        console.warn(`No input.json for study ${study_id}; using database page count.`);
+                        return resolve({
+                            study_type: parseInt(row.study_type),
+                            total_pages: parseInt(row.total_pages)
+                        });
+                    }
+                    console.error(`Failed to read study ${study_id} input.json:`, read_err);
+                    return reject(read_err);
+                }
+
+                let study_data;
+                try {
+                    study_data = JSON.parse(contents);
+                } catch (parse_err) {
+                    console.error(`Invalid input.json for study ${study_id}:`, parse_err);
+                    return reject(new Error(`Invalid input.json for study ${study_id}`));
+                }
+                if (!Array.isArray(study_data.PATIENT_ID) || study_data.PATIENT_ID.length === 0) {
+                    const data_err = new Error(`input.json for study ${study_id} has no patient samples`);
+                    console.error(data_err.message);
+                    return reject(data_err);
+                }
+
+                const total_pages = study_data.PATIENT_ID.length;
+                if (total_pages !== parseInt(row.total_pages)) {
+                    console.warn(
+                        `Study ${study_id} database page count (${row.total_pages}) differs from input.json (${total_pages}); using input.json.`
+                    );
+                    db.run(
+                        `UPDATE study SET total_pages = ? WHERE study_id = ?`,
+                        [total_pages, study_id],
+                        (update_err) => {
+                            if (update_err) {
+                                console.error(`Failed to update page count for study ${study_id}:`, update_err);
+                            }
+                        }
+                    );
+                }
+                resolve({ study_type: parseInt(row.study_type), total_pages });
+            });
         });
     });
 }
@@ -397,9 +561,9 @@ init();
 register_post_event("/db_validation_participant_id_and_study_id", cb_event_db_validation_participant_id_and_study_id);
 register_post_event("/write_db", cb_event_write_db);
 register_post_event("/log_visit", cb_event_log_visit);
+register_post_event("/write_chat_history", cb_event_write_chat_history);
 register_get_event("/read_db", cb_event_read_db);
 register_get_event("/read_db_prev", cb_event_read_db_prev);
+register_get_event("/read_chat_history", cb_event_read_chat_history);
 //register_get_event("/read_db_get_last_updated_page_nr", cb_event_get_last_updated_page_nr);
 //register_get_event("/read_db_get_study_details", cb_event_get_study_details);
-
-start_http_server(PORT);

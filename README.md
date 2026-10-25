@@ -75,7 +75,7 @@ To start the application (for Ubuntu users), run:
 ```
 
 - This script runs a Docker container based on the image created in the previous step.
-- The **database/database.db** file contains the database tables (**participant_feedback** and **study**).
+- The **database/database.db** file contains the database tables (**participant_feedback**, **participant_chat_history**, and **study**). Chat transcripts are stored per participant, study, and page, and are included with classifications in database CSV exports.
 - The **src/client** folder (which contains the client logic) is shared between the Docker container and the host.
 - The web application runs by default at tcp port 7000
 
@@ -134,4 +134,3 @@ To stop the running Docker container, execute (ubuntu users):
 ## Notes
 
 - The `database` folder will be created dynamically when the application runs.
-

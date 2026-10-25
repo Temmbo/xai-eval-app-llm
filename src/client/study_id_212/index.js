@@ -6,7 +6,9 @@
 
 
 let input = null;
-
+let chat_history = [];
+let chat_history_loaded = false;
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:8000`;
 const button_next = document.getElementById("button-next");
 const button_prev = document.getElementById("button-prev");
 const button_submit = document.getElementById("button-submit");
@@ -14,12 +16,17 @@ const radio_buttons = document.getElementsByName("health");
 const patient_id1 = document.getElementById("patient-id-location1");
 const patient_id2 = document.getElementById("patient-id-location2");
 const x_ray_location = document.getElementById("x-ray-location");
-const suggested_diag1 = document.getElementById("suggested-diag-location1");
-const suggested_diag2 = document.getElementById("suggested-diag-location2");
 const true_diag   = document.getElementById("true-diag");
 const x_ray_image = document.getElementById("patient-x-ray-image");
 const x_ray_trait_span = document.getElementById("X_RAY_Trait");
 
+const button_llm_prompt = document.getElementById("send-button");
+const llm_prompt_input = document.getElementById("chat-input");
+
+// Diagnosis hypothesis selector (Healthy / Bone Degen / Overbending / Weak Spine) in the WOE
+// explanation card.
+const hypothesis_selector = document.getElementById("hypothesis-selector");
+const hypothesis_buttons = document.querySelectorAll(".hypothesis-btn");
 
 function redirectIfFinished() {
     const pid = get_participant_id_from_url();
@@ -61,23 +68,27 @@ function get_radio_button_status()
 }
 
 function set_participant_diagnosis(val) {
-
-    if (typeof val === "string") {
-        val = val.toLowerCase();
-    } else {
-        console.error("Invalid diagnosis string received from DB");
+    clear_radio_buttons();
+    if (typeof val !== "string") {
+        console.error("Invalid diagnosis string received from DB:", val);
         return false;
     }
 
-    if (val === "healthy") {
-        document.getElementById("radio-healthy").checked = true;
-    } else if (val === "ocdegen") {
-        document.getElementById("radio-unhealthy").checked = true;
-    } else {
-        console.error("Invalid value:", val);
+    const diagnosis_value = val.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    const legacy_values = ["ocdegen", "unhealthy"];
+    if (legacy_values.includes(diagnosis_value)) {
+        console.warn(
+            `Stored diagnosis "${val}" uses the previous two-class scheme; please select one of the four diagnoses again.`
+        );
         return false;
     }
 
+    const radio = Array.from(radio_buttons).find((button) => button.value === diagnosis_value);
+    if (!radio) {
+        console.error("Unknown diagnosis string received from DB:", val);
+        return false;
+    }
+    radio.checked = true;
     return true;
 }
 
@@ -120,7 +131,7 @@ function get_params_from_url()
         study_id: params.get('study_id') ? decodeURIComponent(params.get('study_id')) : null,
         study_type: params.get('study_id') ? decodeURIComponent(params.get('study_type')) : null,
         page_nr: params.get('page_nr') ? decodeURIComponent(params.get('page_nr')) : null,
-        total_pages: params.get('page_nr') ? decodeURIComponent(params.get('total_pages')) : null,
+        total_pages: params.get('total_pages') ? decodeURIComponent(params.get('total_pages')) : null,
     };
 }
 
@@ -235,11 +246,14 @@ function db_update_success_action(participant_id, study_id, current_page_nr) {
     page_nr = current_page_nr + 1;
     up = get_params_from_url();
     update_study_url(participant_id, study_id, up.study_type, page_nr, up.total_pages);
+    load_chat_history();
     clear_radio_buttons();
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
     button_toggle_next_or_submit();
     log_page_visit(participant_id, study_id, page_nr);
+    reset_templates();
+    sync_blocky_context_to_backend(page_nr);
 }
 
 function button_toggle_next_or_submit() {
@@ -284,15 +298,19 @@ function db_update_duplicate_entry_action(participant_id, study_id, current_page
     page_nr = current_page_nr + 1;
     up = get_params_from_url();
     update_study_url(participant_id, study_id, up.study_type, page_nr, up.total_pages);
+    load_chat_history();
     clear_radio_buttons();
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
     db_get_and_set_participant_diagnosis(participant_id, study_id, page_nr);
     log_page_visit(participant_id, study_id, page_nr);
+    reset_templates();
+    sync_blocky_context_to_backend(page_nr);
 }
 
 
 function next_button_action()
 {
+    
     let ret = get_radio_button_status();
     if(ret == null ){
         alert("Please select an option before proceeding to the next page.");
@@ -300,7 +318,314 @@ function next_button_action()
     }
 
     db_update();
+
 }
+
+
+
+
+function get_or_create_llm_session_id() {
+    const participant_id = get_participant_id_from_url();
+    const study_id = get_study_id_from_url();
+    // Stable per participant+study, so backend session state persists across pages
+    return `${participant_id}_${study_id}`;
+}
+
+function render_chat_history() {
+    const chatArea = document.getElementById("llm-chat-messages");
+    chatArea.replaceChildren();
+
+    if (chat_history.length === 0) {
+        const greeting = document.createElement("div");
+        greeting.className = "message bot-message";
+        greeting.textContent = "Hi! How can I help?";
+        chatArea.appendChild(greeting);
+    }
+
+    chat_history.forEach(({ role, content }) => {
+        const message = document.createElement("div");
+        message.className = `message ${role === "user" ? "user-message" : "bot-message"}`;
+        message.textContent = `${role === "user" ? "You" : "LLM"}: ${content}`;
+        chatArea.appendChild(message);
+    });
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function load_chat_history() {
+    const participant_id = get_participant_id_from_url();
+    const study_id = get_study_id_from_url();
+    const page_nr = get_page_nr_from_url();
+    chat_history = [];
+    chat_history_loaded = false;
+    render_chat_history();
+
+    if (!participant_id || !study_id || !Number.isInteger(page_nr)) {
+        console.error("Cannot load chat history: missing participant, study, or page ID.");
+        return;
+    }
+
+    const query = new URLSearchParams({ participant_id, study_id, page_nr });
+    try {
+        const response = await fetch(`/read_chat_history?${query}`);
+        if (!response.ok) {
+            throw new Error(`Server responded ${response.status}: ${await response.text()}`);
+        }
+        const data = await response.json();
+        if (
+            participant_id !== get_participant_id_from_url() ||
+            study_id !== get_study_id_from_url() ||
+            page_nr !== get_page_nr_from_url()
+        ) {
+            return;
+        }
+        if (!Array.isArray(data.messages)) {
+            throw new Error("Chat history response did not contain a messages array");
+        }
+        chat_history = data.messages;
+        chat_history_loaded = true;
+        render_chat_history();
+    } catch (error) {
+        console.error("Error loading chat history:", error);
+        if (
+            participant_id === get_participant_id_from_url() &&
+            study_id === get_study_id_from_url() &&
+            page_nr === get_page_nr_from_url()
+        ) {
+            chat_history_loaded = true;
+            const chatArea = document.getElementById("llm-chat-messages");
+            const errorMessage = document.createElement("div");
+            errorMessage.className = "message bot-message error";
+            errorMessage.textContent = "Saved chat history could not be loaded. You can still continue chatting.";
+            chatArea.appendChild(errorMessage);
+        }
+    }
+}
+
+async function save_chat_history(page_nr, messages) {
+    const response = await fetch("/write_chat_history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            participant_id: get_participant_id_from_url(),
+            study_id: get_study_id_from_url(),
+            page_nr,
+            messages
+        })
+    });
+    if (!response.ok) {
+        throw new Error(`Failed to save chat history: ${response.status} ${await response.text()}`);
+    }
+}
+
+async function sync_blocky_context_to_backend(page_nr, selectedHypothesis = get_selected_hypothesis()) {
+    const session_id = get_or_create_llm_session_id();
+    const currentlySelectedHypothesis = hypothesis_image_keys[selectedHypothesis];
+    if (!currentlySelectedHypothesis) {
+        console.error(`Cannot sync blocky context: unknown selected hypothesis "${selectedHypothesis}"`);
+        return;
+    }
+
+    const woeFeatures = csv_json_get_woe_attributes(page_nr);
+    if (Object.values(woeFeatures).every(features => features.length === 0)) {
+        console.warn(`Skipping blocky context sync (page ${page_nr}): no valid WoE features`);
+        return;
+    }
+ 
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/context`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: session_id,
+                xai_context: {
+                    currently_selected_hypothesis: currentlySelectedHypothesis,
+                    woe_features: woeFeatures
+                }
+            })
+        });
+ 
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`Failed to sync blocky context (page ${page_nr}): ${response.status} ${errText}`);
+        }
+    } catch (error) {
+        console.error(`Error syncing blocky context (page ${page_nr}):`, error);
+    }
+}
+
+
+async function llm_button_action()
+{
+    if (!chat_history_loaded) {
+        await load_chat_history();
+    }
+    if (!chat_history_loaded) {
+        alert("Chat is not ready because this page is missing participant information.");
+        return;
+    }
+
+    let user_input = llm_prompt_input.value.trim();
+    if(user_input == ""){
+        alert("Please enter a prompt before sending to the LLM.");
+        return;
+    }
+ 
+    const session_id = get_or_create_llm_session_id();
+    const chatArea = document.getElementById("llm-chat-messages");
+    const page_nr = get_page_nr_from_url();
+    const page_history = chat_history;
+    page_history.push({ role: "user", content: user_input });
+    render_chat_history();
+ 
+    // Clear input right away for responsiveness
+    llm_prompt_input.value = "";
+    button_llm_prompt.disabled = true;
+ 
+    let chat_history_save_failed = false;
+    try {
+        await save_chat_history(page_nr, page_history);
+    } catch (error) {
+        console.error("Error saving user chat message:", error);
+        chat_history_save_failed = true;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                session_id: session_id,
+                message: user_input,
+            })
+        });
+ 
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Server responded ${response.status}: ${errText}`);
+        }
+ 
+        const data = await response.json();
+        page_history.push({ role: "assistant", content: String(data.answer) });
+        if (page_history === chat_history) {
+            render_chat_history();
+        }
+        try {
+            await save_chat_history(page_nr, page_history);
+        } catch (error) {
+            console.error("Error saving assistant chat response:", error);
+            chat_history_save_failed = true;
+        }
+        if (chat_history_save_failed) {
+            const saveWarning = document.createElement("div");
+            saveWarning.className = "message bot-message error";
+            saveWarning.textContent = "Chat history could not be saved. Your messages may not be available next time.";
+            chatArea.appendChild(saveWarning);
+        }
+        get_template_from_llm(); // Refresh the template buttons after each LLM response
+    } catch (error) {
+        console.error("Error processing or saving chat message:", error);
+        const errorMessage = document.createElement("div");
+        errorMessage.className = "message bot-message error";
+        errorMessage.textContent = error.message.startsWith("Failed to save chat history")
+            ? "Your chat could not be saved. Please check your connection and try again."
+            : "There was an error processing your request. Please try again.";
+        chatArea.appendChild(errorMessage);
+    } finally {
+        button_llm_prompt.disabled = false;
+    }
+}
+
+async function get_template_from_llm() {
+    // This function obtains the three recommended chat inputs from the LLM and populates the corresponding buttons in the UI.
+    const session_id = get_or_create_llm_session_id();
+    const templateButtons = [
+        document.getElementById("llm-template-1"),
+        document.getElementById("llm-template-2"),
+        document.getElementById("llm-template-3")
+    ];
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/templates`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ session_id: session_id })
+        });
+ 
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Server responded ${response.status}: ${errText}`);
+        }
+ 
+        const data = await response.json();
+ 
+        // Populate the buttons with the received templates
+        templateButtons.forEach((button, index) => {
+            if (data.templates[index]) {
+                button.textContent = data.templates[index];
+                button.disabled = false;
+                button.onclick = () => {
+                    llm_prompt_input.value = data.templates[index];
+                    llm_button_action();
+                };
+            } else {
+                button.textContent = "No template available";
+                button.disabled = true;
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching templates:', error);
+    }
+}
+
+async function reset_templates() {
+    // This function resets the template buttons to their default state. Used every time a new page or sample is loaded.
+    const session_id = get_or_create_llm_session_id();
+    const templateButtons = [
+        document.getElementById("llm-template-1"),
+        document.getElementById("llm-template-2"),
+        document.getElementById("llm-template-3")
+    ];
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/reset_templates`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ session_id: session_id })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Server responded ${response.status}: ${errText}`);
+        }
+
+        const data = await response.json();
+
+        // Populate the buttons with the received templates
+        templateButtons.forEach((button, index) => {
+            if (data.templates[index]) {
+                button.textContent = data.templates[index];
+                button.disabled = false;
+                button.onclick = () => {
+                    llm_prompt_input.value = data.templates[index];
+                    llm_button_action();
+                };
+            } else {
+                button.textContent = "No template available";
+                button.disabled = true;
+            }
+        });
+    } catch (error) {
+        console.error('Error resetting templates:', error);
+    }
+}
+
 
 async function db_get_and_set_participant_diagnosis_prev_button_click(participant_id, study_id, page_nr) {
     console.log("db_get_and_set_participant_diagnosis_prev_button_click");
@@ -313,6 +638,7 @@ async function db_get_and_set_participant_diagnosis_prev_button_click(participan
             //First URL Update
             up = get_params_from_url();
             update_study_url(participant_id, study_id, up.study_type, page_nr, up.total_pages);
+            load_chat_history();
             set_participant_diagnosis(diagnosis);
             //Set all attributes from csv_json info
             csv_json_get_all_attributes_and_set_in_html_page(page_nr);
@@ -379,29 +705,6 @@ async function radio_button_changed() {
     }
 }
 
-function set_suggested_diag(value) {
-    suggested_diag1.textContent = value;
-    suggested_diag2.textContent = value;
-
-    p_card = document.getElementById("patient-card");
-
-    if (value == "OCDegen") {
-        // suggested_diag1.className = "";
-        suggested_diag2.className = "";
-        // suggested_diag1.className = "unhealthy"
-        suggested_diag2.className = "unhealthy"
-        p_card.classList.remove('healthy')
-        p_card.classList.add('unhealthy')
-    } else {
-        // suggested_diag1.className = "";
-        suggested_diag2.className = "";
-        // suggested_diag1.className = "healthy"
-        suggested_diag2.className = "healthy"
-        p_card.classList.remove('unhealthy')
-        p_card.classList.add('healthy')
-    }
-}
-
 function set_x_ray_location(value)
 {
     x_ray_location.textContent = value;
@@ -409,15 +712,26 @@ function set_x_ray_location(value)
 
 function set_true_diag(value)
 {
-    true_diag.textContent = value;
-    if(value == "OCDegen"){
-        true_diag.className = ""
-        true_diag.className = "unhealthy"
-    }else{
-        true_diag.className = ""
-        true_diag.className = "healthy"
-    }
+    true_diag.textContent = format_diagnosis(value);
+    true_diag.className = is_illness_diagnosis(value) ? "unhealthy" : "healthy";
 
+}
+
+function format_diagnosis(value) {
+    const labels = {
+        healthy: "Healthy",
+        weak_spine: "Weak Spine",
+        bone_degen: "Bone Degen",
+        overbending: "Overbending",
+        ocdegen: "OCDegen",
+        unhealthy: "OCDegen"
+    };
+    const key = String(value).trim().toLowerCase().replace(/[\s-]+/g, "_");
+    return labels[key] || value;
+}
+
+function is_illness_diagnosis(value) {
+    return String(value).trim().toLowerCase() !== "healthy";
 }
 
 //get total pagecount for the study
@@ -428,25 +742,28 @@ function csv_json_get_total_page_count()
 
 function csv_json_get_main_attributes(page_nr)
 {
-
     index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
+
+    if (index === undefined || input.PATIENT_ID[index] === undefined) {
+        showError(`No data for page ${page_nr} (index ${index}). Check that total_pages in the URL matches input.json length (${input.PATIENT_ID.length}).`);
+        return [null, null, null, null];
+    }
+
     l_patient_id = input.PATIENT_ID[index];
-    l_x_ray_loc  = input.X_RAY_LOCATION[index];
+    l_x_ray_loc  = input.X_RAY_LOCATION?.[index] ?? "";
     l_true_diag = input.TRUE_DIAG[index];
-    l_suggested_diag = input.SUGGESTED_DIAG[index];
     l_image = "img/" + input.X_RAY_IMAGE[index];
-    attributes = [l_patient_id, l_image, l_x_ray_loc, l_true_diag, l_suggested_diag]
+    attributes = [l_patient_id, l_image, l_x_ray_loc, l_true_diag]
     return attributes;
 }
 
 function set_main_attributes_in_html_page(page_nr, attr)
 {
-    //attributes = [patient_id, image, x_ray_loc, true_diag, suggested_diag]
+    //attributes = [patient_id, image, x_ray_loc, true_diag]
     set_patient_id(attr[0]);
     set_x_ray_image(attr[1]);
     set_x_ray_location(attr[2]);
     set_true_diag(attr[3]);
-    set_suggested_diag(attr[4])
     set_progress(page_nr, csv_json_get_total_page_count());
 }
 
@@ -458,27 +775,94 @@ function csv_json_get_all_attributes_and_set_in_html_page(page_nr)
     set_additional_attributes_in_html_page(page_nr, attr);
 }
 
+function csv_json_get_woe_attributes(page_nr)
+{
+    const index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
+    const woeFeatures = {};
+    const hypotheses = Object.values(hypothesis_image_keys);
+    for (const hypothesis of hypotheses) {
+        woeFeatures[hypothesis] = [];
+        for (const [feature, class_features] of Object.entries(input.WOE_FEATURES)) {
+            const rawValue = class_features[hypothesis]?.[index];
+            const numericValue = typeof rawValue === "number" ||
+                (typeof rawValue === "string" && rawValue.trim() !== "")
+                ? Number(rawValue)
+                : NaN;
+            let value;
+            if (Number.isFinite(numericValue)) {
+                value = numericValue;
+            } else if (typeof rawValue === "string" && rawValue.trim().toLowerCase() === "-inf") {
+                value = rawValue;
+            } else {
+                console.warn(
+                    `Skipping invalid WOE value for ${feature} (${hypothesis}) on page ${page_nr}:`,
+                    rawValue
+                );
+                continue;
+            }
+            woeFeatures[hypothesis].push({
+                feature: feature,
+                value: value,
+            });
+        }
+    }
+
+    return woeFeatures;
+}
+
 function csv_json_get_additional_attributes(page_nr)
 {
-
-    index = window.shuffledIndices[page_nr-1]; // get the shuffled index for this page number
-    l_patient_id = input.PATIENT_ID[index];
-
-    concept_card_1_title    = "Important Features";
-    concept_card_1_image    = "img/"       + input.Shap[index];
-    concept_card_1_caption  =  input.Shap_Caption[index];
-    attributes = [concept_card_1_title, concept_card_1_image, concept_card_1_caption];
-    return attributes;
+    return ["WOE Explanation"];
 }
 
 function set_additional_attributes_in_html_page(page_nr, attr)
 {
     document.getElementById("concept-card-1-title").textContent = attr[0];
-    document.getElementById("concept-card-1-image").src = attr[1];
-    document.getElementById("concept-card-1-caption").textContent = attr[2];
+    set_hypothesis_graph(page_nr, get_selected_hypothesis());
+    document.getElementById("concept-card-1-caption").textContent = "";
 }
 
+const hypothesis_image_keys = {
+    healthy: "healthy",
+    "bone-degen": "bone_degen",
+    overbending: "overbending",
+    "weak-spine": "weak_spine"
+};
 
+function get_selected_hypothesis() {
+    const active_button = document.querySelector(".hypothesis-btn.active");
+    return active_button ? active_button.dataset.hypothesis : "healthy";
+}
+
+function set_hypothesis_graph(page_nr, hypothesis) {
+    const index = window.shuffledIndices[page_nr - 1];
+    const image_key = hypothesis_image_keys[hypothesis];
+    const image_name = input.EXPLANATION_IMAGE?.[image_key]?.[index];
+    const image = document.getElementById("concept-card-1-image");
+    if (!image_name) {
+        showError(`No WOE explanation image for hypothesis "${hypothesis}" on sample ${index + 1}.`);
+        image.removeAttribute("src");
+        return;
+    }
+    image.onerror = () => showError(`Could not load WOE explanation image "${image_name}".`);
+    image.src = `img/${image_name}`;
+    image.alt = `${hypothesis.replace(/-/g, " ")} WOE explanation graph`;
+}
+
+// --- Diagnosis hypothesis selector --------------------------------------
+// Switches the WOE explanation graph to the selected diagnosis hypothesis.
+
+function set_active_hypothesis_button(hypothesis) {
+    hypothesis_buttons.forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.hypothesis === hypothesis);
+    });
+}
+
+function hypothesis_selected(hypothesis) {
+    const page_nr = get_page_nr_from_url();
+    set_hypothesis_graph(page_nr, hypothesis);
+    sync_blocky_context_to_backend(page_nr, hypothesis);
+}
 
 async function load_json_data() {
     try {
@@ -488,7 +872,16 @@ async function load_json_data() {
         }
         input = await response.json();  // Set input with the loaded JSON
         console.log('Data loaded:', input);  // Debug: Confirm input data loaded
-        init_page();
+        await init_page();
+        await load_chat_history();
+        // Fetch LLM templates and populate the template buttons
+        await get_template_from_llm();
+
+        // Sync the first blocky's explanation context once init_page() has set it up.
+        const start_page_nr = get_page_nr_from_url();
+        reset_templates(); // Reset the LLM template buttons for the new page
+        sync_blocky_context_to_backend(start_page_nr);
+
     } catch (error) {
         console.error("There was a problem with the fetch operation:", error);
         input = null;  // Reset input in case of error
@@ -512,9 +905,31 @@ button_prev.addEventListener("click", function () {
 });
 
 
+button_llm_prompt.addEventListener("click", function() {
+    llm_button_action();
+});
+
+llm_prompt_input.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault(); // Prevent the default action (form submission)
+        llm_button_action();
+    }
+});
+
+
 radio_buttons.forEach((radio) => {
     radio.addEventListener("change", function () {
         radio_button_changed();
+    });
+});
+
+hypothesis_buttons.forEach((btn) => {
+    btn.addEventListener("click", function () {
+        const hypothesis = btn.dataset.hypothesis;
+        if (btn.classList.contains("active")) return; // already selected, nothing to do
+
+        set_active_hypothesis_button(hypothesis);
+        hypothesis_selected(hypothesis);
     });
 });
 
@@ -539,7 +954,10 @@ window.addEventListener('popstate', () => {
     const page_nr = get_page_nr_from_url();
 
     // Refresh the main content for the new page number
+    load_chat_history();
     csv_json_get_all_attributes_and_set_in_html_page(page_nr);
+    reset_templates(); // Reset the LLM template buttons for the new page
+    sync_blocky_context_to_backend(page_nr); // Sync the blocky explanation context for the new page
 
     // Re-load any diagnosis already stored for that page
     db_get_and_set_participant_diagnosis(

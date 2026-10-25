@@ -14,7 +14,18 @@ def export_to_csv(db_name, table_name, csv_file):
         conn = sqlite3.connect(db_name)
         cursor = conn.cursor()
 
-        cursor.execute(f"SELECT * FROM {table_name}")
+        if table_name == "participant_feedback":
+            cursor.execute(
+                """SELECT participant_feedback.*,
+                          COALESCE(participant_chat_history.messages, '[]') AS chat_history
+                   FROM participant_feedback
+                   LEFT JOIN participant_chat_history
+                     ON participant_feedback.participant_id = participant_chat_history.participant_id
+                     AND participant_feedback.study_id = participant_chat_history.study_id
+                     AND participant_feedback.page_nr = participant_chat_history.page_nr"""
+            )
+        else:
+            cursor.execute(f"SELECT * FROM {table_name}")
         rows = cursor.fetchall()
 
         column_names = [description[0] for description in cursor.description]

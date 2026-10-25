@@ -1,5 +1,5 @@
 """
-Description: Initialize Database ( Create participant_feedback and study table if not exist )
+Description: Initialize the database and create required tables if they do not exist.
 
 Author: V Natarjan
 """
@@ -13,6 +13,18 @@ def create_database():
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS participant_chat_history (
+            participant_id TEXT NOT NULL,
+            study_id INTEGER NOT NULL,
+            page_nr INTEGER NOT NULL,
+            messages TEXT NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now')),
+            updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+            PRIMARY KEY (participant_id, study_id, page_nr)
+        )
+    ''')
 
     # cursor.execute('''
     #     CREATE TABLE IF NOT EXISTS participant_feedback (

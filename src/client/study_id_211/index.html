@@ -6,9 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>xai.ui/latest</title>
   <link rel="icon" href="data:image/x-icon;,">
-        <link rel="stylesheet" href="index.css" />
-  <link rel="stylesheet" href="../shared_assets/row2.css" />
-  <link rel="stylesheet" href="../shared_assets/row2.css" />
+  <link rel="stylesheet" href="index.css" />
   <link rel="stylesheet" href="../shared_assets/row2.css" />
   <script src="../shared_assets/js/common.js"></script>
   <script src="index.js" defer></script>
@@ -33,116 +31,107 @@
 
     <!-- MAIN -->
     <main>
-      <!-- ROW 1 :  text card + 2 image cards -->
-      <div class="main-row1">
-        <!-- (1) Text card -->
+      <div class="study-layout">
+        <div class="study-left">
+          <div class="main-row1">
+            <!-- Patient image card -->
+            <div class="card-row1-col2-3-4-5" id="patient-card">
+              <div class="title" id="patient-id-location2"></div>
 
-        <!-- Patient image card -->
-        <div class="card-row1-col2-3-4-5" id="patient-card">
-          <div class="title" id="patient-id-location2"></div>
+              <img id="patient-x-ray-image"
+                   class="image"
+                   src=""
+                   alt="Patient Image" />
 
-          <img id="patient-x-ray-image"
-               class="image"
-               src=""
-               alt="Patient Image" />
-
-          <!-- Hidden placeholder so existing JS call is safe -->
-          <div class="caption" style="display:none">
-            <span id="x-ray-location"></span>
-          </div>
-        </div>
-
-        <!-- WOE explanation image card -->
-        <div class="card-row1-col2-3-4-5">
-          <div id="concept-card-1-title" class="title"></div>
-          
-          <div class="image-wrapper">
-            <img id="concept-card-1-image"
-                class="image"
-                src=""
-                alt="WOE explanation graph" />
-          </div>
-
-          <!-- Diagnosis hypothesis selector: click a hypothesis to preview its explanation graph -->
-          <div class="hypothesis-selector" id="hypothesis-selector">
-            <button type="button" class="hypothesis-btn active" data-hypothesis="healthy">Healthy</button>
-            <button type="button" class="hypothesis-btn" data-hypothesis="bone-degen">Bone Degen</button>
-            <button type="button" class="hypothesis-btn" data-hypothesis="overbending">Overbending</button>
-            <button type="button" class="hypothesis-btn" data-hypothesis="weak-spine">Weak Spine</button>
-          </div>
-        </div>
-      </div> <!-- /main-row1 -->
-
-
-      <!-- ROW 2 : explanation + interaction -->
-      <div class="main-row2">
-
-        <!-- interaction -->
-        <div class="card-row2-col2">
-          <h3 class="title">Blocky Diagnosis:</h3>
-          
-          <div class="toggle-hint">Before making your diagnosis, review the Blocky
-            and note which diagnosis-specific features are present. When you're ready, click
-            anywhere in this card to view the AI's suggestion, the true diagnosis,
-            and the confirmed symptoms. You'll then be able to select your own diagnosis.
-          </div>
-
-          <div class="card-content">
-            <!-- left column -->
-            <div class="left-content">
-              <p><b>AI Diagnosis:</b>
-                 <span id="suggested-diag-location2" class="unhealthy"></span></p>
-
-              <p class="hidden"><b>True Diagnosis:</b>
-                 <span id="true-diag" class="healthy"></span></p>
-
-              <!-- caption comes here, same font-weight, no colour -->
-              <p class="hidden"><b>Caption:</b> <span id="concept-card-1-caption"></span></p>
+              <!-- Hidden placeholder so existing JS call is safe -->
+              <div class="caption" style="display:none">
+                <span id="x-ray-location"></span>
+              </div>
             </div>
 
-            <!-- right column -->
-            <div class="right-options">
-              <h4>Your Diagnosis:</h4>
+            <!-- WOE explanation image card -->
+            <div class="card-row1-col2-3-4-5">
+              <div id="concept-card-1-title" class="title"></div>
 
-              <label class="healthy-label">
-                <input id="radio-healthy"
-                       type="radio"
-                       name="health"
-                       value="healthy" />
-                Healthy
-              </label>
+              <div class="image-wrapper">
+                <img id="concept-card-1-image"
+                     class="image"
+                     src=""
+                     alt="WOE explanation graph" />
+              </div>
 
-              <label class="unhealthy-label">
-                <input id="radio-weak-spine"
-                       type="radio"
-                       name="health"
-                       value="weak_spine" />
-                Weak Spine
-              </label>
-
-              <label class="unhealthy-label">
-                <input id="radio-bone-degen"
-                       type="radio"
-                       name="health"
-                       value="bone_degen" />
-                Bone Degen
-              </label>
-
-              <label class="unhealthy-label">
-                <input id="radio-overbending"
-                       type="radio"
-                       name="health"
-                       value="overbending" />
-                Overbending
-              </label>
+              <div class="hypothesis-selector" id="hypothesis-selector">
+                <button type="button" class="hypothesis-btn active" data-hypothesis="healthy">Healthy</button>
+                <button type="button" class="hypothesis-btn" data-hypothesis="bone-degen">Bone Degen</button>
+                <button type="button" class="hypothesis-btn" data-hypothesis="overbending">Overbending</button>
+                <button type="button" class="hypothesis-btn" data-hypothesis="weak-spine">Weak Spine</button>
+              </div>
             </div>
-          </div> <!-- /card-content -->
+          </div>
+          
+
+          <div class="card-row2-col2">
+            <h3 class="title">Blocky Diagnosis:</h3>
+
+            <div class="toggle-hint">Before making your diagnosis, review the Blocky
+              and note which diagnosis-specific features are present. When you're ready, click
+              anywhere in this card to view the AI's suggestion, the true diagnosis,
+              and the confirmed symptoms. You'll then be able to select your own diagnosis.
+            </div>
+
+            <div class="card-content">
+              <div class="left-content">
+                <p><b>AI Diagnosis:</b>
+                   <span id="suggested-diag-location2" class="unhealthy"></span></p>
+
+                <p class="hidden"><b>True Diagnosis:</b>
+                   <span id="true-diag" class="healthy"></span></p>
+
+                <p class="hidden"><b>Caption:</b> <span id="concept-card-1-caption"></span></p>
+              </div>
+
+              <div class="right-options">
+                <h4>Your Diagnosis:</h4>
+
+                <label class="healthy-label">
+                  <input id="radio-healthy"
+                         type="radio"
+                         name="health"
+                         value="healthy" />
+                  Healthy
+                </label>
+
+                <label class="unhealthy-label">
+                  <input id="radio-weak-spine"
+                         type="radio"
+                         name="health"
+                         value="weak_spine" />
+                  Weak Spine
+                </label>
+
+                <label class="unhealthy-label">
+                  <input id="radio-bone-degen"
+                         type="radio"
+                         name="health"
+                         value="bone_degen" />
+                  Bone Degen
+                </label>
+
+                <label class="unhealthy-label">
+                  <input id="radio-overbending"
+                         type="radio"
+                         name="health"
+                         value="overbending" />
+                  Overbending
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Card for OCDegen Biomarkers in Column 2 of main-row1 TODO REPLACED BY TEXT FIELD -->
+        <!-- Chat assistant -->
         <div id="llm-chat-box" class="chat-box">
           <div id="llm-chat-messages" class="chat-messages">
-            <!-- Messages appear here -->
             <div class="message bot-message">Hi! How can I help?</div>
           </div>
 
@@ -150,7 +139,6 @@
             <!-- Hidden input retained for JS compatibility; users cannot type directly -->
             <input id="chat-input" type="hidden" />
 
-            <!-- Three template buttons replace the visible free-text input -->
             <button id="llm-template-1" class="template-button" disabled>Loading...</button>
             <button id="llm-template-2" class="template-button" disabled>Loading...</button>
             <button id="llm-template-3" class="template-button" disabled>Loading...</button>
@@ -159,19 +147,7 @@
             <button id="send-button" class="invisible">Send</button>
           </div>
         </div>
-
-        <div class="card-row2-col1">
-          <h3 class="card-warning">Important</h3>
-          <div class="card-warning-text">
-            <ul class="card-warning-list">
-              <li>Review the X-ray and explanation before deciding.</li>
-              <li>The AI suggestion may not be correct.</li>
-              <li><strong>Select the best-fitting diagnosis</strong> before continuing.</li>
-            </ul>
-          </div>
-        </div><!-- <div class="card-row2-col1">  -->
-
-      </div> <!-- /main-row2 -->
+      </div>
     </main>
 
     <!-- FOOTER -->
