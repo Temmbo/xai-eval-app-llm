@@ -791,10 +791,26 @@ function set_main_attributes_in_html_page(page_nr, attr)
 
 function csv_json_get_all_attributes_and_set_in_html_page(page_nr)
 {
+    reset_assist_covers();
     attr = csv_json_get_main_attributes(page_nr);
     set_main_attributes_in_html_page(page_nr, attr);
     attr = csv_json_get_additional_attributes(page_nr);
     set_additional_attributes_in_html_page(page_nr, attr);
+}
+
+function set_assist_cover_visible(cover, visible) {
+    cover.hidden = !visible;
+    for (const element of cover.parentElement.children) {
+        if (element !== cover) {
+            element.inert = visible;
+        }
+    }
+}
+
+function reset_assist_covers() {
+    document.querySelectorAll(".assist-cover").forEach((cover) => {
+        set_assist_cover_visible(cover, true);
+    });
 }
 
 function csv_json_get_woe_attributes(page_nr)
@@ -995,6 +1011,11 @@ window.addEventListener('popstate', () => {
 
 // Toggle card content visibility on click for tutorial only
 document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".assist-cover").forEach((cover) => {
+        cover.addEventListener("click", () => set_assist_cover_visible(cover, false));
+    });
+    reset_assist_covers();
+
     const card = document.querySelector(".card-row2-col2");
     const content = card.querySelector(".card-content");
     const hint = card.querySelector(".toggle-hint");
